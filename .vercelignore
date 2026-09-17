@@ -1,0 +1,13 @@
+/web
+/api
+/terova
+/Context
+/ntt-command-centre/api
+/ntt-command-centre/data
+/ntt-command-centre/docs
+/ntt-command-centre/web/node_modules
+/ntt-command-centre/web/dist
+/ntt-command-centre/.env
+/ntt-command-centre/.access-disabled
+*.docx
+*.xlsx

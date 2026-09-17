@@ -81,6 +81,31 @@ app.add_middleware(
 app.include_router(auth.router)
 
 
+@app.on_event("startup")
+def _warm() -> None:
+    """
+    Build the expensive caches before the first person arrives.
+
+    The first view of a process loads the four files, derives the movement
+    features, scores every open deal and fits the independent closure model —
+    about twenty seconds on a fresh Cloud Run instance. Left to the first
+    request, that is twenty seconds of a stakeholder looking at a skeleton.
+    Done here, in a thread so the health probe answers immediately, the same
+    work happens while the instance is still being routed to.
+    """
+    import threading
+
+    def run() -> None:
+        try:
+            for persona in PR.PERSONAS:
+                p = PR.resolve(persona)
+                V.view(p.persona.home, FilterState(), p)
+        except Exception as e:  # noqa: BLE001 — warming must never take the process down
+            print(f"warm-up skipped: {type(e).__name__}: {e}")
+
+    threading.Thread(target=run, name="warm-up", daemon=True).start()
+
+
 # --------------------------------------------------------------------------- #
 # Identity — the one place a principal is created
 # --------------------------------------------------------------------------- #
