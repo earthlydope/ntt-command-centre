@@ -21,6 +21,8 @@
    Loaded from main.tsx after the component sheets. No colour literals. */
 
 .pv-tag:not(.pv-rep__chip) {
+  /* A tone word is one word; a pill that breaks mid-word reads as two pills. */
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: 4px;
