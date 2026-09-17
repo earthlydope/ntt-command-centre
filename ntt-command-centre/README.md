@@ -230,7 +230,13 @@ Lead with these; do not wait to be asked. They are on the Context surfaces and i
 - **The plan does not foot at LOB grain.** Budget cells are denormalised onto opportunity rows, so a
   cell exists only where a line happens to sit there. 52 of 60 quarter cells and 136 of 180 month
   cells are present; the Q3 breakdown is 8.8% short of its headline and December 23.9% short. Every
-  breakdown returns its own `residual` and the UI prints it.
+  breakdown returns its own `residual` and the UI prints it — on the performance grid and on the
+  actions-page bullets, in words: the rows add up to $317K of the $370K still to deliver, and the
+  footnote says which cells are missing and how much surplus was floored.
+- **Coverage has one definition.** `budget.forward_window` picks the window (the current quarter
+  onward, or the one quarter a filter names) and `budget._coverage_cells` computes plan, won and
+  open per LOB × portfolio over it; the tile, the grid, the bullets and the executive's coverage
+  cards are all rolled up from those cells, so they cannot disagree about a line.
 - **`value_at_stake` in the anomaly table is gross profit, not revenue** — ~6× off against a revenue
   chart.
 - **Concentration.** One account is 14.5% of GP and the top five are 39%, so any share chart groups

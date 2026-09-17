@@ -233,14 +233,31 @@ function render(
       if (d.budget !== undefined) rowsOut.push(["Revenue plan", money(d.budget)]);
       if (d.gp !== undefined) rowsOut.push(["Pipeline GP", money(d.gp)]);
       if (d.gpBudget !== undefined) rowsOut.push(["GP plan", money(d.gpBudget)]);
+      if (d.remaining !== undefined) rowsOut.push(["Plan left", money(d.remaining)]);
+      if (typeof d.status === "string") rowsOut.push(["Status", d.status]);
     } else {
       rowsOut.push(["Value", formatValue(Number(d[vKey]), spec.format)]);
       rowsOut.push(["Share of grid", `${((Number(d[vKey]) / (total || 1)) * 100).toFixed(1)}%`]);
     }
-    rowsOut.push([
-      spec.countBasis === "opportunities" ? "Opportunities" : "Lines",
-      Number(d[countKey] ?? d.lines ?? 0).toLocaleString("en-US"),
-    ]);
+    // A row-shaped grid carries a line or opportunity count; a contract-shaped
+    // grid carries whatever the server put in `secondary`, under its own label.
+    // A coverage grid's secondary is the plan GP already printed above, so it
+    // gets no second row — before this it was printed under "Lines".
+    if (!contractCells) {
+      rowsOut.push([
+        spec.countBasis === "opportunities" ? "Opportunities" : "Lines",
+        Number(d[countKey] ?? d.lines ?? 0).toLocaleString("en-US"),
+      ]);
+    } else if (d.secondary !== undefined && !isCoverage) {
+      // The rep benchmark sends the raw rate behind each z-score with "%" as
+      // its label, which is a unit, not a caption.
+      const unit = String(d.secondaryLabel ?? "");
+      rowsOut.push(
+        unit === "%"
+          ? ["Raw rate", `${Number(d.secondary).toFixed(1)}%`]
+          : [unit || "Secondary", formatValue(Number(d.secondary), spec.format)],
+      );
+    }
     if (d.material === false) rowsOut.push(["Materiality", "below the 0.5% floor"]);
     return rowsOut;
   };

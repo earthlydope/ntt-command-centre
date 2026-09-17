@@ -39,7 +39,7 @@ from . import budget as B
 from . import crosssell as XS
 from . import predict as P
 from .loader import AS_OF, CUR_QUARTER
-from .measures import FilterState, money, pct, slice_frame, subset
+from .measures import FilterState, money, pct, slice_frame
 from .movement_features import STALL_DAYS, rep_behaviour
 from .personas import Principal
 
@@ -532,42 +532,29 @@ def _exec_cards(fs: FilterState, principal: Principal) -> list[Card]:
 
     # Coverage holes — a target with nothing behind it.
     #
-    # Measured FORWARD, the way `budget.totals` measures coverage: plan, won
-    # and open from the current quarter onward, or from the one quarter a
-    # filter names. Read against the current quarter alone this found nothing,
+    # Measured FORWARD, over the window `budget.forward_window` decides (the
+    # current quarter onward, or the one quarter a filter names), and read
+    # from the same LOB × portfolio cells the performance grid draws, so this
+    # card, the grid and the actions-page bullets cannot disagree about a
+    # line. Read against the current quarter alone this found nothing,
     # because that quarter's plan is already delivered — while the next one
     # sat at 0.18x cover with no cell-level card to say where. A decision
     # about pipeline generation is about the quarters still to come.
     #
     # Two exclusions, both of which produced a wrong card before they were
     # added. A cell whose plan is already fully delivered has NO remaining
-    # target, so its null coverage means "done", not "uncovered" — without this
+    # target, so its status is "Delivered", not "Uncovered" — without this
     # test a cell sitting on $50K of open pipeline was being reported as having
     # none. And a cell is only worth an executive's attention if the money is
     # material; a $3K shortfall on a $2.4M plan is a rounding line, not a
     # decision.
     MATERIAL_CELL_GP = 25_000
-    df = slice_frame(fs, principal)
-    cells = B.cells_quarter()
-    quarters = ([fs.quarter] if fs.quarter else
-                sorted(q for q in cells["quarter"].unique() if q >= CUR_QUARTER))
-    window = quarters[0] if len(quarters) == 1 else f"{quarters[0]} onward"
-    plan = (cells[cells["quarter"].isin(quarters)]
-            .groupby(["lob", "portfolio"])["budget_gp"].sum())
-    won_df = subset(df, "won")
-    open_df = subset(df, "open")
-    won = (won_df[won_df["fiscal_quarter"].isin(quarters)]
-           .groupby(["lob", "portfolio"])["acv_gp"].sum())
-    open_gp = (open_df[open_df["fiscal_quarter"].isin(quarters)]
-               .groupby(["lob", "portfolio"])["acv_gp"].sum())
-    holes = []
-    for (lob, portfolio), b in plan.items():
-        remaining = max(float(b) - float(won.get((lob, portfolio), 0.0)), 0.0)
-        o = float(open_gp.get((lob, portfolio), 0.0))
-        cov = (o / remaining) if remaining else None
-        if remaining >= MATERIAL_CELL_GP and cov is not None and cov < 0.5:
-            holes.append({"lob": lob, "portfolio": portfolio, "remainingGp": remaining,
-                          "openGp": o, "coverage": cov})
+    grid = B.coverage_grid(fs, principal)
+    window = grid["window"]
+    holes = [{"lob": c["lob"], "portfolio": c["portfolio"], "remainingGp": c["remainingGp"],
+              "openGp": c["openGp"], "coverage": c["coverage"]}
+             for c in grid["cells"]
+             if c["remainingGp"] >= MATERIAL_CELL_GP and c["status"] == "Uncovered"]
     holes.sort(key=lambda c: -c["remainingGp"])
     for c in holes[:4]:
         cov = c["coverage"]

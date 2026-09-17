@@ -270,11 +270,12 @@ def api_anomalies(request: Request, limit: int = Query(default=80, le=500),
     a = ANOM.for_persona(p.key)
     if fs.anomaly_category:
         a = a[a["category"] == fs.anomaly_category]
-    # Opportunity-grain findings are narrowed to the principal's own rows;
-    # rep, account and segment findings are already persona-routed.
-    scoped = set(M.slice_frame(fs, p)["opportunity_code"])
-    keep = (~a["is_opportunity_grain"]) | a["entity_id"].isin(scoped)
-    a = a[keep]
+    # Routing decides which findings a role can act on; row-level security
+    # decides which of those this caller may see. Every grain is narrowed —
+    # an account finding to the caller's own accounts, a rep finding to the
+    # reps in their predicate — not only the opportunity ones. The rule lives
+    # with the findings so the risks page applies the same one.
+    a = ANOM.scoped(a, fs, p)
     return {
         "summary": ANOM.summary(),
         "taxonomy": {"categories": [{"name": c, "question": ANOM.CATEGORY_BLURB[c]}

@@ -300,6 +300,27 @@ export interface DealDetail {
   repConfidence?: number;
   confidenceGap?: number;
   expectedGp?: number;
+  /** Which model produced pWin. "independent" means the DS drop does not
+   *  cover this deal and this layer's own classifier stood in, in which case
+   *  every DS field below is null: there is no SHAP driver for a number the
+   *  DS model did not produce. */
+  pWinSource?: "ds-model" | "independent";
+  /** The DS model's per-deal SHAP sentence, verbatim from the workbook —
+   *  "Stage progression (Identification) decreased win probability the most". */
+  drivingForce?: string | null;
+  /** The workbook feature behind that sentence, raw and in plain words. */
+  driverFeature?: string | null;
+  driverLabel?: string | null;
+  /** Whether that feature pushed pWin up or down for this deal. */
+  driverDirection?: "up" | "down" | null;
+  /** The two above as one table-cell line, "Stage reached · lowers pWin",
+   *  worded by the server so every surface prints the same words. */
+  dsDriver?: string | null;
+  /** The workbook's literal risk bucket (1 = Dark Red / Very High Risk) and
+   *  its label, plus the label of the quantile-relative bucket. */
+  riskBucket?: number | null;
+  riskBucketLabel?: string | null;
+  riskBucketRelativeLabel?: string | null;
   timeline: { date: string; field: string; from: string; to: string; by: string }[];
   benchmarks: {
     feature: string;

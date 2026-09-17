@@ -382,8 +382,19 @@ def complete(system: str, user: str, schema: dict, *, max_tokens: int = 900,
 
 
 def health() -> dict:
+    # `enabled` answers whether a model can actually be reached, not whether
+    # the switch is on. With the flag up and no key configured every call
+    # falls straight through to the computed template, and a probe that said
+    # `enabled: true` there had monitoring believe the AI was live while every
+    # card was rendering degraded. The configured providers are listed in the
+    # order the chain tries them.
+    configured = [name for name, ok in (("anthropic", bool(ANTHROPIC_KEY)),
+                                        ("gemini", bool(GEMINI_KEYS)),
+                                        ("openrouter", bool(OPENROUTER_KEY))) if ok]
     return {
-        "enabled": LLM_ENABLED,
+        "enabled": bool(LLM_ENABLED and configured),
+        "flag": LLM_ENABLED,
+        "providersConfigured": configured,
         "anthropicConfigured": bool(ANTHROPIC_KEY),
         "anthropicModel": ANTHROPIC_MODEL,
         "geminiKeys": len(GEMINI_KEYS),

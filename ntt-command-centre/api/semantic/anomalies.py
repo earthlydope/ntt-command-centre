@@ -33,7 +33,9 @@ import numpy as np
 import pandas as pd
 
 from .loader import anomalies_raw, facts, opportunities
+from .measures import FilterState, slice_frame
 from .movement_features import STALL_DAYS, features, rep_behaviour
+from .personas import Principal
 
 # --------------------------------------------------------------------------- #
 # The taxonomy — Anomaly_Reference_Guide.docx, carried verbatim in meaning
@@ -414,6 +416,55 @@ def for_persona(persona: str) -> pd.DataFrame:
     """The findings this persona is the right person to act on."""
     u = unified()
     return u.loc[u["personas"].map(lambda p: persona in p)].reset_index(drop=True)
+
+
+#: The grains that are the whole entity's by construction. A coverage hole in
+#: "FY26-Q2 / Security / SDIS" or an industry's share of the book has no owner
+#: below the executive, so nobody scoped may read one.
+ENTITY_GRAINS: frozenset[str] = frozenset({"Industry", "Segment"})
+
+
+def scoped(a: pd.DataFrame, fs: FilterState, principal: Principal) -> pd.DataFrame:
+    """
+    Row-level security for findings, grain by grain.
+
+    `for_persona` answers which findings a ROLE is the right person to act on.
+    This answers which of those THIS caller may see, and the two are different
+    questions: an account-concentration finding is routed to every AE, but an
+    AE has no business reading one about an account they hold no line at, and
+    a manager coaching a rep in another pod is coaching someone else's team.
+    Before this existed the narrowing stopped at opportunity grain, so a rep
+    with 44 findings of their own was shown 121, most of them other people's
+    accounts.
+
+    Each grain narrows through its own key, the same way `enriched` joins it:
+
+      Opportunity   the code is in the caller's scoped rows
+      Account       the code (`entity_id`) or the name (`entity_label`) is at
+                    an account the caller's scoped rows sit at
+      Rep           the rep is one the predicate names; unscoped, every rep
+      Industry /    the executive's alone — an entity-wide reading has no
+      Segment       owner below that level
+
+    The frame is the same `slice_frame` every figure uses, so a filter that
+    narrows the page narrows its findings with it.
+    """
+    if a.empty:
+        return a
+    frame = slice_frame(fs, principal)
+    opps = set(frame["opportunity_code"])
+    accounts = set(frame["account_code"]) | set(frame["account_name"])
+    owners = principal.predicate.get("owner")
+    unscoped = not principal.predicate
+    grain = a["entity_type"]
+    keep = grain.eq("Opportunity") & a["entity_id"].isin(opps)
+    keep |= grain.eq("Account") & (a["entity_id"].isin(accounts)
+                                   | a["entity_label"].isin(accounts))
+    if unscoped:
+        keep |= grain.eq("Rep") | grain.isin(ENTITY_GRAINS)
+    elif owners:
+        keep |= grain.eq("Rep") & a["entity_id"].isin(owners)
+    return a.loc[keep].reset_index(drop=True)
 
 
 def summary() -> dict:

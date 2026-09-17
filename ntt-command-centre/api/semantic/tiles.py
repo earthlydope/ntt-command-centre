@@ -374,12 +374,36 @@ def _manager(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list
 # --------------------------------------------------------------------------- #
 
 
+def _plan_span(fs: FilterState, p: Principal) -> str:
+    """
+    Which quarters the plan actually covers, in words — "FY26 Q1–Q3".
+
+    The extract carries a budget for three quarters and none for Q4, so "of
+    the $2.44M plan" reads as the year's plan when it is three quarters of
+    one. Derived from the quarters that carry a budget rather than written
+    down, so the label follows the data when a Q4 cell arrives.
+    """
+    qs = [q["quarter"] for q in B.by_quarter(fs, p) if q.get("budgetGp")]
+    if not qs:
+        return "plan"
+    fys = {q.split("-")[0] for q in qs}
+    first, last = qs[0].split("-")[-1], qs[-1].split("-")[-1]
+    span = first if first == last else f"{first}–{last}"
+    return f"{fys.pop()} {span} plan" if len(fys) == 1 else f"{qs[0]}–{qs[-1]} plan"
+
+
 def _exec(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list[dict]:
     frame, risk = c["frame"], c["risk"]
     open_b, stalled = m["open"], m["stalled"]
     t = B.totals(fs, p)
     conc = ACC.concentration(fs, p)
-    at_risk = float(risk.loc[risk["risk_band"].isin(("High", "Critical")), "acv_gp"].sum())
+    hot = risk["risk_band"].isin(("High", "Critical"))
+    at_risk = float(risk.loc[hot, "acv_gp"].sum())
+    # The sub-line describes the value above it. It used to quote the stalled
+    # share of open value, a different measure from the High/Critical band the
+    # figure sums, so the tile read as one number explained by another.
+    at_risk_sub = f"{int(hot.sum())} deals scoring high or critical"
+    plan_span = _plan_span(fs, p)
 
     if page == "performance":
         qs = B.by_quarter(fs, p)
@@ -391,7 +415,7 @@ def _exec(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list[di
         beat = sum(1 for x in past_months if x["attainmentPct"] >= 100)
         return [
             tile("won", "Won this year", t["wonGp"], money(t["wonGp"]),
-                 f"Against a {money(t['budgetGp'])} plan", "good", "up-good",
+                 f"Against a {money(t['budgetGp'])} {plan_span}", "good", "up-good",
                  "won", trend(frame, "won_gp")),
             tile("attain", "Of the plan", t["attainmentPct"], pct(t["attainmentPct"], 0),
                  "Delivered so far this year",
@@ -458,8 +482,7 @@ def _exec(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list[di
             tile("stake", "Money involved", stake, money(stake),
                  "Profit attached to these findings", "danger", "up-bad", "metric"),
             tile("at_risk", "Pipeline at risk", at_risk, money(at_risk),
-                 f"{pct(m['stalledShare'])} of open value has stopped moving",
-                 "danger", "up-bad", "clock"),
+                 at_risk_sub, "danger", "up-bad", "clock"),
             tile("upside", "Good news", s["upside"], count(s["upside"]),
                  "Findings that are chances to sell, not problems",
                  "good", "up-good", "growth"),
@@ -512,7 +535,7 @@ def _exec(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list[di
             tile("stake", "Money involved", stake, money(stake),
                  "Across every decision on this page", "danger", "up-bad", "metric"),
             tile("holes", "Targets with no pipeline", grid["holes"], count(grid["holes"]),
-                 f"of {len(grid['cells'])} areas in {grid['quarter']}",
+                 f"of {len(grid['cells'])} areas, {grid['window']}",
                  "danger" if grid["holes"] else "good", "up-bad", "pipeline"),
             tile("cover", "Pipeline cover", t["coverage"] or 0,
                  mult(t["coverage"]) if t["coverage"] else "plan met",
@@ -525,7 +548,7 @@ def _exec(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list[di
     # tldr — the read
     return [
         tile("won", "Won this year", t["wonGp"], money(t["wonGp"]),
-             f"{pct(t['attainmentPct'], 0)} of the {money(t['budgetGp'])} plan",
+             f"{pct(t['attainmentPct'], 0)} of the {money(t['budgetGp'])} {plan_span}",
              "good" if t["attainmentPct"] >= 100 else "warn", "up-good",
              "won", trend(frame, "won_gp")),
         tile("open", "Open pipeline", open_b["gp"], money(open_b["gp"]),
@@ -536,8 +559,7 @@ def _exec(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list[di
              "Against what is left of the plan",
              "good" if (t["coverage"] or 9) >= 1.5 else "danger", "up-good", "target"),
         tile("at_risk", "At risk", at_risk, money(at_risk),
-             f"{pct(m['stalledShare'])} of open value has stopped moving",
-             "danger", "up-bad", "risk"),
+             at_risk_sub, "danger", "up-bad", "risk"),
         tile("top_account", "Biggest customer", conc["topAccountShare"],
              pct(conc["topAccountShare"]),
              conc["accounts"][0]["account_name"] if conc["accounts"] else "—",

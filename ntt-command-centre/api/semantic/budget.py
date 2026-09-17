@@ -22,6 +22,12 @@ worse than one that refuses to drill. So every breakdown this module returns
 carries its own `residual` and `cellsPresent`, and the UI is required to print
 them. `totals()` always reads the entity grain, never the sum of the cells.
 
+**Coverage has one definition.** Open GP against the plan still to deliver,
+all three measured over `forward_window` — the current quarter onward, or the
+one quarter a filter names — and rolled up from `_coverage_cells` whether the
+caller wants the tile, the LOB × portfolio grid or a per-line row. Two pages
+showing two coverages for the same line is the failure this guards against.
+
 RAG thresholds are the client's, carried through from the export's own
 `TP_RAGStatus` / `QP_RAGStatus` / `ClosedCommit_RAGStatus` columns rather than
 reinvented here — with one correction of framing: those columns read Red for
@@ -37,7 +43,7 @@ import numpy as np
 import pandas as pd
 
 from .loader import AS_OF, CUR_QUARTER, facts
-from .measures import FilterState, slice_frame, subset
+from .measures import FilterState, money, slice_frame, subset
 from .personas import Principal
 
 BUDGET_CAPTION = (
@@ -121,6 +127,149 @@ def _residual(cell_sum: float, entity_sum: float, present: int, possible: int) -
     }
 
 
+def forward_window(fs: FilterState) -> tuple[list[str], str]:
+    """
+    The quarters every coverage figure is measured over, and their label.
+
+    Coverage is a FORWARD question — "is there enough pipeline for what is
+    still to come" — so the window is the current quarter onward, or the one
+    quarter a filter names. This is the ONE place that decides it: the tile,
+    the LOB × portfolio grid and the per-line rows all read it from here, so
+    the performance page and the actions page cannot disagree about the same
+    line. Before it was shared, the grid netted the whole year's wins against
+    one quarter's plan and read every line as delivered while the rows beside
+    it read Networking at 1.30x.
+    """
+    if fs.quarter:
+        return [fs.quarter], fs.quarter
+    quarters = [q for q in entity_quarters()["quarter"] if q >= CUR_QUARTER]
+    if not quarters:
+        return [], CUR_QUARTER
+    label = quarters[0] if len(quarters) == 1 else f"{quarters[0]} onward"
+    return quarters, label
+
+
+def _status(remaining: float, coverage: float | None) -> tuple[str, str]:
+    """The one reading of a coverage ratio, so a bullet and a grid cell agree."""
+    if remaining <= 0:
+        return "Delivered", "good"
+    if coverage >= 1.0:
+        return "Covered", "good"
+    if coverage >= 0.5:
+        return "Thin", "warn"
+    return "Uncovered", "danger"
+
+
+def _coverage_cells(fs: FilterState, principal: Principal) -> tuple[pd.DataFrame, dict]:
+    """
+    Plan, won and open per (LOB, portfolio) over the forward window — the single
+    computation behind `coverage_grid` and `coverage_by`.
+
+    Won and open are the slice's lines whose close date falls in the window;
+    the plan is the entity's cells for those quarters. A line can only sit in
+    a cell that exists (that is how the cells reached the extract), so summing
+    the cells to a dimension gives the same won and open as grouping the lines
+    directly would.
+
+    The second value is the footing at plan grain: how much of the entity's
+    plan for the window the cells actually carry.
+    """
+    quarters, window = forward_window(fs)
+    df = slice_frame(fs, principal)
+    cells = cells_quarter()
+    cells = cells[cells["quarter"].isin(quarters)]
+    won_df = subset(df, "won")
+    won_df = won_df[won_df["fiscal_quarter"].isin(quarters)]
+    open_df = subset(df, "open")
+    open_df = open_df[open_df["fiscal_quarter"].isin(quarters)]
+
+    grid = cells.groupby(["lob", "portfolio"])["budget_gp"].sum().rename("budget_gp")
+    won = won_df.groupby(["lob", "portfolio"])["acv_gp"].sum().rename("won_gp")
+    open_gp = open_df.groupby(["lob", "portfolio"])["acv_gp"].sum().rename("open_gp")
+    frame = pd.concat([grid, won, open_gp], axis=1).fillna(0.0)
+    # Past the last planned quarter there are no cells at all, and an empty
+    # concat loses the (lob, portfolio) index; give the callers the columns
+    # they expect rather than a KeyError on the sort.
+    if frame.empty:
+        frame = pd.DataFrame(columns=["lob", "portfolio", "budget_gp", "won_gp", "open_gp"])
+    else:
+        frame = (frame.reset_index().sort_values(["lob", "portfolio"])
+                 .reset_index(drop=True))
+
+    eq = entity_quarters()
+    entity_plan = float(eq.loc[eq["quarter"].isin(quarters), "budget_gp"].sum())
+    entity_won = float(won_df["acv_gp"].sum())
+    basis = {
+        "quarters": quarters,
+        "window": window,
+        # Cells present is the number of quarter cells the extract carries for
+        # the window, not the number of distinct rows they collapse to — four
+        # LOB rows are not four cells, and counting them as such is what made
+        # a 13-of-20 shortfall print as "4 of 20".
+        "cellsPresent": int(len(cells)),
+        "cellsPossible": 20 * len(quarters),
+        "cellPlan": float(cells["budget_gp"].sum()),
+        "entityPlan": entity_plan,
+        "entityWon": entity_won,
+        "entityRemaining": max(entity_plan - entity_won, 0.0),
+    }
+    return frame, basis
+
+
+def _footing(rows: list[dict], basis: dict, what: str) -> dict:
+    """
+    Where a coverage breakdown stops footing to the tile above it, in words.
+
+    Two things pull the rows away from the headline, and both are named
+    rather than folded into one percentage. Plan cells the extract does not
+    carry take their share of the plan with them — the 8.8% Q3 shortfall in
+    the module docstring. And a row that has already beaten its plan carries a
+    target of zero, not a negative one, so its surplus is not netted against
+    the lines still short; the tile nets at entity grain and so sees it.
+    """
+    plan = _residual(basis["cellPlan"], basis["entityPlan"],
+                     basis["cellsPresent"], basis["cellsPossible"])
+    row_sum = float(sum(r["remainingGp"] for r in rows))
+    entity_rem = float(basis["entityRemaining"])
+    missing_plan = max(basis["entityPlan"] - basis["cellPlan"], 0.0)
+    surplus = float(sum(max(r["wonGp"] - r["budgetGp"], 0.0) for r in rows))
+    diff = row_sum - entity_rem
+    reasons = []
+    if missing_plan > 1:
+        reasons.append(
+            f"the plan is not broken down for every line ({basis['cellsPresent']} of "
+            f"{basis['cellsPossible']} quarter cells exist in the extract), so "
+            f"{money(missing_plan)} of it has no {what[:-1]} here")
+    if surplus > 1:
+        reasons.append(
+            f"{money(surplus)} of surplus on lines already past their plan counts as "
+            f"zero rather than offsetting the rest")
+    note = None
+    if abs(diff) > 1 and entity_rem > 0:
+        # "of" when the rows fall short of the tile, "against" when the
+        # clipped surpluses push them past it — "$456K of the $370K" reads as
+        # a typo.
+        joiner = "of" if row_sum < entity_rem else "against"
+        note = (f"The {what} below add up to {money(row_sum)} {joiner} the "
+                f"{money(entity_rem)} still to deliver from {basis['window']}"
+                + (": " + "; ".join(reasons) if reasons else "")
+                + ". The tile's figure is the authoritative one.")
+    elif entity_rem <= 0 and row_sum > 1:
+        note = (f"The plan for {basis['window']} is already delivered at entity grain; "
+                f"the {money(row_sum)} of targets below are the lines still short of "
+                f"their own share, which the surplus elsewhere covers.")
+    return {
+        **plan,
+        "planNote": plan["note"],
+        "remainingRowSum": row_sum,
+        "remainingEntity": entity_rem,
+        "remainingResidual": float(diff),
+        "remainingResidualPct": float(100 * diff / entity_rem) if entity_rem else 0.0,
+        "surplusClipped": surplus,
+        "note": note,
+    }
+
+
 def totals(fs: FilterState, principal: Principal) -> dict:
     """
     Plan, actual and coverage for the current slice.
@@ -150,10 +299,9 @@ def totals(fs: FilterState, principal: Principal) -> dict:
     # across the whole year. Measured against the full-year residual it reads
     # 26.67x here, because Q1 and Q2 over-delivered and left almost nothing
     # outstanding; that number is arithmetically correct and operationally
-    # meaningless, and nobody would act on it.
-    fwd_q = [q for q in entity_quarters()["quarter"] if q >= CUR_QUARTER]
-    if fs.quarter:
-        fwd_q = [fs.quarter]
+    # meaningless, and nobody would act on it. The window comes from
+    # `forward_window` so the grid and the per-line rows measure the same one.
+    fwd_q, fwd_label = forward_window(fs)
     fwd_budget = float(q.loc[q["quarter"].isin(fwd_q), "budget_gp"].sum())
     fwd_won = float(won.loc[won["fiscal_quarter"].isin(fwd_q), "acv_gp"].sum())
     fwd_open = float(open_df.loc[open_df["fiscal_quarter"].isin(fwd_q), "acv_gp"].sum())
@@ -179,13 +327,14 @@ def totals(fs: FilterState, principal: Principal) -> dict:
         "qualifiedCoverage": (qual_gp / fwd_remaining) if fwd_remaining else None,
         "coverageBasis": {
             "quarters": fwd_q,
+            "window": fwd_label,
             "planGp": fwd_budget,
             "wonGp": fwd_won,
             "openGp": fwd_open,
             "remainingGp": fwd_remaining,
-            "note": f"Coverage is measured from {CUR_QUARTER} onward — pipeline "
-                    f"against the plan that is still to come, not against the "
-                    f"year's residual.",
+            "note": f"Coverage is measured over {fwd_label} — pipeline against "
+                    f"the plan that is still to come, not against the year's "
+                    f"residual.",
         },
         "gapGp": budget_gp - won_gp,
         "scopedToPersona": scoped,
@@ -253,85 +402,83 @@ def coverage_grid(fs: FilterState, principal: Principal) -> dict:
     """
     The LOB × Portfolio coverage heat map — where a target has no pipeline behind it.
 
-    Returns the residual alongside, because these cells do not sum to the
-    headline and the UI must say so.
+    Measured over the forward window, like every other coverage figure. Each
+    cell is one (LOB, portfolio) pair with its plan, won and open summed across
+    the window's quarters; `quarter` is the window's label, since a grid that
+    reads "FY26-Q2" over Q2-and-Q3 numbers is the disagreement this module
+    exists to prevent.
+
+    A hole is a target still to deliver with nothing open against it. A cell
+    whose plan is already won has no target left, so its empty pipeline is
+    "done", not a hole. Returns the footing alongside, because these cells do
+    not sum to the tile above them and the UI must say so.
     """
-    df = slice_frame(fs, principal)
-    cells = cells_quarter()
-    q = fs.quarter or CUR_QUARTER
-    cells = cells[cells["quarter"] == q]
-
-    open_df = subset(df, "open")
-    open_df = open_df[open_df["fiscal_quarter"] == q] if fs.quarter else open_df
-    won_df = subset(df, "won")
-    won_df = won_df[won_df["fiscal_quarter"] == q] if fs.quarter else won_df
-
-    open_gp = open_df.groupby(["lob", "portfolio"])["acv_gp"].sum()
-    won_gp = won_df.groupby(["lob", "portfolio"])["acv_gp"].sum()
-
+    frame, basis = _coverage_cells(fs, principal)
     out = []
-    for r in cells.itertuples(index=False):
-        k = (r.lob, r.portfolio)
-        o = float(open_gp.get(k, 0.0))
-        w = float(won_gp.get(k, 0.0))
-        remaining = max(float(r.budget_gp) - w, 0.0)
+    for r in frame.itertuples(index=False):
+        b, w, o = float(r.budget_gp), float(r.won_gp), float(r.open_gp)
+        remaining = max(b - w, 0.0)
         cov = (o / remaining) if remaining else None
+        status, tone = _status(remaining, cov)
         out.append({
             "lob": r.lob, "portfolio": r.portfolio,
-            "budgetGp": float(r.budget_gp),
-            "openGp": o, "wonGp": w, "remainingGp": remaining,
+            "budgetGp": b, "openGp": o, "wonGp": w, "remainingGp": remaining,
             "coverage": cov,
-            "isHole": bool(o == 0 and r.budget_gp > 0),
-            "isThin": bool(cov is not None and cov < 0.5),
+            "status": status, "tone": tone,
+            "isHole": bool(remaining > 0 and o <= 0),
+            # Thin is "has pipeline, but under half of what is left" — it
+            # excludes the holes so the two counts can be read side by side
+            # without a cell being in both.
+            "isThin": bool(o > 0 and cov is not None and cov < 0.5),
         })
-
-    entity_total = float(entity_quarters().loc[
-        entity_quarters()["quarter"] == q, "budget_gp"].sum())
     return {
-        "quarter": q,
+        "quarter": basis["window"],
+        "quarters": basis["quarters"],
+        "window": basis["window"],
         "cells": out,
         "holes": sum(1 for c in out if c["isHole"]),
         "thin": sum(1 for c in out if c["isThin"]),
-        "footing": _residual(cells["budget_gp"].sum(), entity_total, len(cells), 20),
+        "footing": _footing(out, basis, "cells"),
         "caption": BUDGET_CAPTION,
     }
 
 
 def coverage_by(fs: FilterState, principal: Principal, dim: str) -> dict:
-    """Plan vs pipeline for one dimension — `lob` or `portfolio` only."""
+    """
+    Plan vs pipeline for one dimension — `lob` or `portfolio` only.
+
+    Rolled up from the same cells as `coverage_grid`, over the same forward
+    window, and the remaining target is netted at THIS grain: a line's plan
+    less the line's wins, floored at zero. That is why the rows do not sum to
+    the tile — the tile nets at entity grain — and the footing says so.
+    """
     if dim not in ("lob", "portfolio"):
         raise KeyError(
             f"the plan exists only at LOB and portfolio grain, not '{dim}'. "
             "Every other dimension would need a budget the extract does not carry."
         )
-    df = slice_frame(fs, principal)
-    q = fs.quarter or CUR_QUARTER
-    cells = cells_quarter()
-    cells = cells[cells["quarter"] == q]
-    plan = cells.groupby(dim)["budget_gp"].sum()
-
-    won = subset(df, "won").groupby(dim)["acv_gp"].sum()
-    open_gp = subset(df, "open").groupby(dim)["acv_gp"].sum()
-
+    frame, basis = _coverage_cells(fs, principal)
+    g = frame.groupby(dim)[["budget_gp", "won_gp", "open_gp"]].sum()
     rows = []
-    for key in plan.index:
-        w = float(won.get(key, 0.0))
-        o = float(open_gp.get(key, 0.0))
-        b = float(plan[key])
+    for key, r in g.iterrows():
+        b, w, o = float(r.budget_gp), float(r.won_gp), float(r.open_gp)
         remaining = max(b - w, 0.0)
+        cov = (o / remaining) if remaining else None
+        status, tone = _status(remaining, cov)
         rows.append({
-            "key": key, "budgetGp": b, "wonGp": w, "openGp": o,
+            "key": str(key), "budgetGp": b, "wonGp": w, "openGp": o,
             "remainingGp": remaining,
-            "coverage": (o / remaining) if remaining else None,
+            "coverage": cov,
             "attainmentPct": (100 * w / b) if b else 0.0,
+            "status": status, "tone": tone,
         })
     rows.sort(key=lambda r: -r["budgetGp"])
-    entity_total = float(entity_quarters().loc[
-        entity_quarters()["quarter"] == q, "budget_gp"].sum())
     return {
-        "quarter": q, "dimension": dim, "rows": rows,
-        "footing": _residual(plan.sum(), entity_total,
-                             int(cells.groupby(dim).ngroups), 20),
+        "quarter": basis["window"],
+        "quarters": basis["quarters"],
+        "window": basis["window"],
+        "dimension": dim, "rows": rows,
+        "footing": _footing(rows, basis, "rows"),
     }
 
 

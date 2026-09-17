@@ -255,9 +255,15 @@ def measures_catalog() -> list[dict]:
          "pandas": "closed.groupby(k)['is_won'].mean()",
          "note": "Opportunity grain only. Entity rate is 37.6% on 1,815 closed deals."},
         {"name": "coverage", "label": "Coverage",
-         "formula": "open GP / (plan GP - won GP)",
-         "pandas": "open_gp / max(budget_gp - won_gp, 0)",
-         "note": "Against REMAINING plan, not the full-year plan."},
+         "formula": "open GP / (plan GP - won GP), all three from the current quarter onward",
+         "pandas": "open_gp / max(budget_gp - won_gp, 0), quarters >= CUR_QUARTER",
+         "note": "A FORWARD measure: plan, won and open are the current quarter onward "
+                 "(or the one quarter a filter names), and remaining is floored at "
+                 "zero at the grain of the row. One definition serves the tile, the "
+                 "LOB x portfolio grid and the per-line rows, so they agree. The "
+                 "rows of a breakdown do not sum to the tile — plan cells missing "
+                 "from the extract and lines already past plan both pull them apart — "
+                 "and every breakdown carries a `footing` that says by how much."},
         {"name": "cycle", "label": "Cycle days", "formula": "close_date - create_date",
          "pandas": "(df['close_date'] - df['create_date']).dt.days",
          "note": "Median 60 days on closed deals."},

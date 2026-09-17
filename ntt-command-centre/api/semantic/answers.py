@@ -50,7 +50,16 @@ from . import predict as P
 from . import query as Q
 from .dimensions import REGISTRY
 from .loader import CUR_QUARTER, STAGE_ORDER, facts, movement
-from .measures import FilterState, count, measures, money, pct, slice_frame, subset
+from .measures import (
+    FilterState,
+    by_dimension,
+    count,
+    measures,
+    money,
+    pct,
+    slice_frame,
+    subset,
+)
 from .movement_features import STALL_DAYS, features, rep_behaviour
 from .personas import Principal
 
@@ -285,6 +294,18 @@ def _features_in_scope(fs: FilterState, principal: Principal) -> pd.DataFrame:
     return f[f["opportunity_code"].isin(codes)]
 
 
+def _findings_in_scope(fs: FilterState, principal: Principal) -> pd.DataFrame:
+    """
+    The findings routed to this role AND inside this caller's rows.
+
+    Routing alone answered "what is the most serious finding?" for a rep with
+    another rep's account, because a role-level list is the entity's list
+    with the wrong types removed. The same grain-by-grain rule the findings
+    endpoint applies narrows it here.
+    """
+    return ANOM.scoped(ANOM.for_persona(principal.key), fs, principal)
+
+
 def _opp_win_rate(df: pd.DataFrame) -> tuple[float, int, int]:
     closed = df[df["is_closed"]]
     o = closed.groupby("opportunity_code")["is_won"].first()
@@ -374,6 +395,61 @@ def _action_for(metric: str, sub: str, top: str, low: str, dim_label: str,
     if sub == "lost":
         return f"Review the lost deals in {top} for a reason that repeats."
     return f"Start with {top}: it carries the most weight in this view."
+
+
+def _full_distribution(plan: dict, fs: FilterState, principal: Principal,
+                       dim: str, metric: str, sub: str) -> dict | None:
+    """
+    The whole grouped distribution behind a top-N breakdown.
+
+    The rows a plan returns are cut at `limit` with the tail folded into one
+    "Other" row, which is right for a chart and wrong for a median: taken over
+    the ten accounts shown, "the middle account holds $411K and the smallest
+    $214K" when the middle of all 357 holds about $5K. So the breakdown is
+    recomputed here without the cut, over the same scoped and filtered rows
+    the plan ran on.
+
+    Where the metric is money, members of the scope that hold none of the
+    subset count as zero: an account with nothing open still exists, and a
+    median of open pipeline that skips it overstates what a typical account
+    holds. `zero` is how many such members there are, so the sentence can say
+    so rather than quietly folding them in.
+    """
+    local = fs
+    for f in plan.get("filters") or []:
+        if f.get("dim") and f.get("value"):
+            local = local.toggled(str(f["dim"]), str(f["value"]))
+    scope = slice_frame(local, principal)
+    df = subset(scope, sub)
+    col = REGISTRY[dim].column if dim in REGISTRY else None
+    if df.empty or not col or col not in df.columns:
+        return None
+    money_metric = metric in ("gp", "rev", "revenue", "risk")
+    if money_metric:
+        g = by_dimension(df, dim, local.with_(measure="gp" if metric in ("gp", "risk")
+                                                else "revenue"))
+        held = {str(k): float(v) for k, v in zip(g["key"], g["value"])}
+        members = {str(k) for k in scope[col].dropna().unique()}
+        values = [held.get(m, 0.0) for m in members | set(held)]
+    elif metric == "count":
+        basis = REGISTRY[dim].count_basis
+        g = (df.groupby(col)["opportunity_code"].nunique() if basis == "opportunities"
+             else df.groupby(col).size())
+        held = {str(k): float(v) for k, v in g.items()}
+        values = list(held.values())
+    else:
+        return None
+    if not values:
+        return None
+    ordered = sorted(values)
+    n = len(ordered)
+    # The same middle element the on-screen rows used, so the two agree when
+    # nothing was cut; a true median would average the two centre values.
+    median = ordered[n // 2]
+    with_any = {k: v for k, v in held.items() if v > 0}
+    lo_key = min(with_any, key=with_any.get) if with_any else None
+    return {"n": n, "median": float(median), "zero": int(sum(1 for v in ordered if v <= 0)),
+            "lo_key": lo_key, "lo_val": float(with_any[lo_key]) if lo_key else 0.0}
 
 
 def narrate_result(plan: dict, result: Q.Result, fs: FilterState,
@@ -513,18 +589,46 @@ def narrate_result(plan: dict, result: Q.Result, fs: FilterState,
         lo = min(named, key=val) if named else rows[0]
         total = sum(val(r) for r in rows)
         share = 100 * val(hi) / total if total else 0.0
-        vals = sorted(val(r) for r in named)
-        median = vals[len(vals) // 2] if vals else 0.0
         opps = int(hi.get("opps", 0) or 0)
         sentences.append(_s(
             f"{hi['key']} has the most {adj}{noun} in {v['scope']}: {fmt(val(hi))}"
             + (f" across {count(opps)} {_plural(opps, 'opportunity', 'opportunities')}"
                if opps and metric != "count" else "")
             + ".", "answer", claim, [str(hi["key"]), fmt(val(hi))]))
-        norm = (f"That is {pct(share)} of the {fmt(total)} of {adj}{noun} in view"
-                + (f"; the middle {dl} holds {fmt(median)}" if len(named) >= 3 else "")
-                + (f", and the smallest, {lo['key']}, {fmt(val(lo))}" if len(named) >= 2 else "")
-                + ".")
+        # The middle and the smallest come from the WHOLE distribution, never
+        # from the rows that survived the cut: over the ten shown the middle
+        # account read $411K when the middle of all 357 holds about $5K. If
+        # the full recount is not available the sentence says it is speaking
+        # of the rows shown, and names no smallest at all.
+        full = None
+        try:
+            full = _full_distribution(plan, fs, principal, dim, metric, sub) if dim else None
+        except (KeyError, ValueError, TypeError):
+            full = None
+        norm = f"That is {pct(share)} of the {fmt(total)} of {adj}{noun} in view"
+        if full and full["n"] >= 3:
+            n_all, zero = count(full["n"]), full["zero"]
+            with_any = "with any" if zero else ""
+            if zero and full["median"] <= 0:
+                norm += (f"; {count(zero)} of the {n_all} {dlp} "
+                         f"{'holds' if zero == 1 else 'hold'} no {adj}{noun} at all, "
+                         f"so the middle one holds nothing")
+            else:
+                norm += f"; the middle of the {n_all} {dlp} holds {fmt(full['median'])}"
+                if zero:
+                    norm += f" ({count(zero)} of them {'holds' if zero == 1 else 'hold'} none)"
+            if full["lo_key"]:
+                norm += (f", and the smallest {with_any}".rstrip()
+                         + f", {full['lo_key']}, {fmt(full['lo_val'])}")
+            norm += "."
+        elif other and len(named) >= 3:
+            shown = sorted(val(r) for r in named)
+            norm += f"; the middle of the {count(len(named))} shown holds {fmt(shown[len(shown) // 2])}."
+        else:
+            shown = sorted(val(r) for r in named)
+            norm += ((f"; the middle {dl} holds {fmt(shown[len(shown) // 2])}" if len(named) >= 3 else "")
+                     + (f", and the smallest, {lo['key']}, {fmt(val(lo))}" if len(named) >= 2 else "")
+                     + ".")
         if other:
             o = other[0]
             norm += (f" The remaining {str(o['key'])[7:-1]} {dlp} together hold "
@@ -1100,7 +1204,7 @@ def _on_track(fs: FilterState, principal: Principal, say: list[str]) -> dict:
 def _needs_fixing(fs: FilterState, principal: Principal, say: list[str]) -> dict:
     plan = _derived_plan("anomalies.for_persona", filter="priority in (Critical, High)",
                          breakdown=["category"])
-    a = ANOM.for_persona(principal.key)
+    a = _findings_in_scope(fs, principal)
     serious = a[a["priority"].isin(["Critical", "High"])]
     if serious.empty:
         return _empty(plan, "serious findings", principal)
@@ -1495,17 +1599,17 @@ def _coverage_holes(fs: FilterState, principal: Principal, say: list[str]) -> di
     g = B.coverage_grid(fs, principal)
     holes = sorted((c for c in g["cells"] if c["isHole"]), key=lambda c: -c["budgetGp"])
     if not holes:
-        return _empty(plan, f"plan cells without pipeline in {g['quarter']}", principal,
+        return _empty(plan, f"plan cells without pipeline in {g['window']}", principal,
                       "Every plan cell has some pipeline")
     rows = [{"key": f"{c['lob']} · {c['portfolio']}", "value": c["budgetGp"], "tone": "danger"}
             for c in holes]
     total = sum(c["budgetGp"] for c in holes)
-    chart = _bar("ask_coverage_holes", f"Plan cells with no open pipeline — {g['quarter']}",
+    chart = _bar("ask_coverage_holes", f"Plan cells with no open pipeline — {g['window']}",
                  rows, says=["coverage.open.by:lob+portfolio"], label="Plan GP",
                  subtitle="Line of business and portfolio cells with a target and nothing open",
                  footnote=g["footing"].get("note"))
     sentences = [
-        _s(f"{count(len(holes))} {_plural(len(holes), 'cell')} of the {g['quarter']} plan "
+        _s(f"{count(len(holes))} {_plural(len(holes), 'cell')} of the plan for {g['window']} "
            f"{'has' if len(holes) == 1 else 'have'} a target and no open pipeline at all, "
            f"worth {money(total)} of plan; the largest is {holes[0]['lob']} in "
            f"{holes[0]['portfolio']} at {money(holes[0]['budgetGp'])}.",
@@ -1538,7 +1642,7 @@ def _furthest_behind(fs: FilterState, principal: Principal, say: list[str]) -> d
              "tone": "danger" if (c["coverage"] or 0) < 0.5 else "warn" if (c["coverage"] or 0) < 1 else "good"}
             for c in cells[:12]]
     w = cells[0]
-    chart = _bar("ask_furthest_behind", f"Pipeline as a share of remaining plan — {g['quarter']}",
+    chart = _bar("ask_furthest_behind", f"Pipeline as a share of remaining plan — {g['window']}",
                  rows, says=["coverage.open.by:lob+portfolio"], label="Coverage", fmt="percent",
                  subtitle="Lowest first · 100% means the open pipeline equals what is left")
     sentences = [
@@ -1995,7 +2099,7 @@ def _worst_deals(fs: FilterState, principal: Principal, say: list[str]) -> dict:
 @register("Which kind of problem is biggest?", "Which kind of finding is biggest?")
 def _biggest_problem(fs: FilterState, principal: Principal, say: list[str]) -> dict:
     plan = _derived_plan("anomalies.for_persona", metric="value at stake", breakdown=["category"])
-    a = ANOM.for_persona(principal.key)
+    a = _findings_in_scope(fs, principal)
     if a.empty:
         return _empty(plan, "findings", principal)
     g = (a.groupby("category").agg(value=("value_at_stake", "sum"), n=("anomaly_id", "count"))
@@ -2028,7 +2132,7 @@ def _biggest_problem(fs: FilterState, principal: Principal, say: list[str]) -> d
 @register("What is the most serious finding?", "What is the most serious problem?")
 def _most_serious(fs: FilterState, principal: Principal, say: list[str]) -> dict:
     plan = _derived_plan("anomalies.for_persona", sort="triage score", limit=8)
-    a = ANOM.for_persona(principal.key).head(8)
+    a = _findings_in_scope(fs, principal).head(8)
     if a.empty:
         return _empty(plan, "findings", principal)
     rows = [{"key": f"{x.entity_label} · {str(x.anomaly_type).replace('_', ' ')}",
@@ -2066,7 +2170,7 @@ def _most_serious(fs: FilterState, principal: Principal, say: list[str]) -> dict
 @register("How much money is affected?", "How much money is at stake?")
 def _money_affected(fs: FilterState, principal: Principal, say: list[str]) -> dict:
     plan = _derived_plan("anomalies.for_persona", metric="value at stake", breakdown=["priority"])
-    a = ANOM.for_persona(principal.key)
+    a = _findings_in_scope(fs, principal)
     if a.empty:
         return _empty(plan, "findings", principal)
     order = ["Critical", "High", "Medium", "Low"]

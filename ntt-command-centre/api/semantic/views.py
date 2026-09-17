@@ -182,12 +182,20 @@ def extras_for(page: str, fs: FilterState, principal: Principal) -> dict:
         r = P.risk_table()
         codes = set(slice_frame(fs, p)["opportunity_code"])
         r = r[r["opportunity_code"].isin(codes)].head(25)
+        # The DS model's SHAP driver sits beside this layer's own top driver:
+        # they answer "what is driving it" from different evidence (a learned
+        # attribution against observable facts) and an AE should see both
+        # without opening every row. None where the DS drop lacks the deal.
+        cp = P.closure_probability()
+        ds_driver = (dict(zip(cp["opportunity_code"], cp["ds_driver"]))
+                     if "ds_driver" in cp.columns else {})
         return {"deals": [
             {"opportunityCode": row.opportunity_code, "name": row.opportunity_name,
              "account": row.account_name, "stage": row.stage, "lob": row.lob,
              "gp": float(row.acv_gp), "revenue": float(row.acv_revenue),
              "riskScore": int(row.risk_score), "riskBand": row.risk_band,
              "topDriver": row.top_driver,
+             "dsDriver": ds_driver.get(row.opportunity_code),
              "quietDays": int(row.quiet_days) if row.quiet_days == row.quiet_days else None,
              "closeDate": row.close_date.date().isoformat() if row.close_date == row.close_date else None,
              "factors": row.risk_factors}
@@ -239,7 +247,10 @@ def extras_for(page: str, fs: FilterState, principal: Principal) -> dict:
                 "lobValue": ACC.lob_count_value().to_dict("records")}
 
     if page == "risks":
-        a = ANOM.for_persona(p.key)
+        # Routing says which findings this role acts on; ANOM.scoped says
+        # which of those this caller may see, grain by grain — the same
+        # rule /api/anomalies applies, so the page and the endpoint agree.
+        a = ANOM.scoped(ANOM.for_persona(p.key), fs, p)
         return {"anomalySummary": ANOM.summary(),
                 "findings": a.head(60).replace({float("nan"): None}).to_dict("records"),
                 "modelCard": P.model_card()}

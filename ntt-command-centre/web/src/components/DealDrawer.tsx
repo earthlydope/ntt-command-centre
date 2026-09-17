@@ -10,9 +10,12 @@
  *             risk" is the question the customer asked, and a score with no
  *             decomposition is a number nobody can act on.
  *   MODEL     pWin beside the rep's own confidence and the gap between them,
- *             labelled a RANKING SIGNAL rather than a forecast, then the
- *             benchmark table — with the near-noise features visibly
- *             de-emphasised instead of dressed up as verdicts.
+ *             labelled a RANKING SIGNAL rather than a forecast; then the two
+ *             drivers side by side — the DS model's SHAP sentence with its
+ *             risk bucket, and this layer's observable-fact factors — each
+ *             labelled by its evidence; then the benchmark table, with the
+ *             near-noise features visibly de-emphasised instead of dressed
+ *             up as verdicts.
  *   TIMELINE  the field-level change log, newest first, with the silences drawn
  *             to scale. On a stalled deal the gap IS the finding, and a list of
  *             evenly spaced rows hides exactly the thing the drawer was opened
@@ -36,7 +39,7 @@ import {
   type ReactNode,
 } from "react";
 import { api } from "../api/client";
-import type { DealDetail, RiskBand } from "../api/types";
+import type { DealDetail, RiskBand, Tone } from "../api/types";
 import { describe, type Async } from "../lenses/useView";
 import { longDate, money, num, pct } from "../lib/format";
 import { useApp } from "../state/AppStateProvider";
@@ -62,6 +65,26 @@ const BAND_MOD: Record<RiskBand, string> = {
   High: "high",
   Critical: "critical",
 };
+
+/** The same word carries the same colour everywhere: this mirrors the deals
+ *  table's band tones so "High" is amber on the list and amber in the drawer. */
+const BAND_TONE: Record<RiskBand, Tone> = {
+  Low: "good",
+  Watch: "neutral",
+  High: "warn",
+  Critical: "danger",
+};
+
+/** Tone for the DS workbook's bucket label, taken from the colour word the
+ *  label itself carries — "Dark Red / Very High Risk" is red because the
+ *  workbook says so, not because this drawer ranked it. A label without a
+ *  colour word ("Intermediate") is a fact, not a verdict, and stays neutral. */
+function bucketTone(label: string | null | undefined): Tone {
+  const l = (label ?? "").trim().toLowerCase();
+  if (l.startsWith("dark red") || l.startsWith("red")) return "danger";
+  if (l.startsWith("dark green") || l.startsWith("green")) return "good";
+  return "neutral";
+}
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -498,6 +521,8 @@ function ModelBlock({ deal }: { deal: DealDetail }) {
         <Empty>No model read is available for this opportunity.</Empty>
       )}
 
+      {hasModel ? <DriverCompare deal={deal} /> : null}
+
       {benchmarks.length === 0 ? (
         <Empty>No feature benchmarks were returned for this opportunity.</Empty>
       ) : (
@@ -518,7 +543,13 @@ function ModelBlock({ deal }: { deal: DealDetail }) {
             </thead>
             <tbody>
               {benchmarks.map((b) => {
-                const method = [b.benchmarkMethod, b.direction, `r = ${num(b.correlationWithWin)}`]
+                // The workbook's identifiers ("mean", "higher_is_better") become the
+                // words a reader would use; the correlation stays as a figure.
+                const method = [
+                  b.benchmarkMethod ? `peer ${b.benchmarkMethod.replace(/_/g, " ")}` : "",
+                  b.direction ? b.direction.replace(/_/g, " ") : "",
+                  `r = ${num(b.correlationWithWin)}`,
+                ]
                   .filter(Boolean)
                   .join(" · ");
                 return (
@@ -567,6 +598,80 @@ function ModelBlock({ deal }: { deal: DealDetail }) {
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * Two answers to "what is driving it", side by side and labelled by their
+ * evidence. The DS model's answer is a SHAP attribution — which feature moved
+ * THIS prediction most — and it is printed verbatim from the workbook, with
+ * the workbook's own risk bucket. This layer's answer is the risk factors
+ * above, which are observable facts; here they are only named, so the two can
+ * be read against each other without the decomposition being repeated.
+ *
+ * They are not merged, because they are not the same kind of claim: one is a
+ * learned attribution from a model whose AUC is 0.595, the other is a fact the
+ * rep can be shown. A reader should be able to see which is which.
+ */
+function DriverCompare({ deal }: { deal: DealDetail }) {
+  const factors = deal.riskFactors ?? [];
+  const fromDs = deal.pWinSource !== "independent";
+
+  return (
+    <div className="dd__drivers">
+      <div className="dd__driver">
+        <div className="dd__driver-head">
+          <span className="dd__driver-source">DS model</span>
+          {deal.riskBucketLabel ? (
+            <span className={`pv-tag pv-tag--${bucketTone(deal.riskBucketLabel)}`}>
+              {deal.riskBucketLabel}
+            </span>
+          ) : null}
+        </div>
+        <div className="dd__driver-title">What the DS model says is driving it</div>
+        {deal.drivingForce ? (
+          <p className="dd__driver-text">{deal.drivingForce}</p>
+        ) : (
+          <p className="dd__driver-text dd__driver-text--none">
+            {fromDs
+              ? "The DS model returned no driver for this deal."
+              : "The DS drop does not cover this deal, so pWin came from this layer's own classifier and there is no SHAP driver to show."}
+          </p>
+        )}
+        <p className="dd__driver-meta">
+          {deal.dsDriver ? <span className="dd__driver-line">{deal.dsDriver}</span> : null}
+          {deal.riskBucketRelativeLabel && deal.riskBucketRelativeLabel !== deal.riskBucketLabel ? (
+            <span className="dd__driver-line">
+              against the rest of the book: {deal.riskBucketRelativeLabel}
+            </span>
+          ) : null}
+          <span className="dd__driver-line">
+            {fromDs
+              ? "pWin from the data-science closure model"
+              : "pWin from this layer's independent model"}
+          </span>
+        </p>
+      </div>
+
+      <div className="dd__driver">
+        <div className="dd__driver-head">
+          <span className="dd__driver-source">Deal risk (observable facts)</span>
+          <span className={`pv-tag pv-tag--${BAND_TONE[deal.riskBand]}`}>{deal.riskBand}</span>
+        </div>
+        <div className="dd__driver-title">What this layer says is driving it</div>
+        {factors.length === 0 ? (
+          <p className="dd__driver-text dd__driver-text--none">No risk factor fired.</p>
+        ) : (
+          <p className="dd__driver-text">{factors.map((f) => f.label).join(" · ")}</p>
+        )}
+        <p className="dd__driver-meta">
+          <span className="dd__driver-line">Risk score {num(deal.riskScore)} of 100</span>
+          <span className="dd__driver-line">
+            each factor is decomposed above, with its points and the fact behind it
+          </span>
+        </p>
+      </div>
+    </div>
   );
 }
 

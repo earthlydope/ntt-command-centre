@@ -921,6 +921,23 @@ button.kpi-row__tile:hover {
 }
 
 .pv-num,
+/* The feature name is the row's heading; the method it was benchmarked by
+   sits under it in the small face, so "Rep confidence" and "peer mean" are
+   two lines, not one run-on word. */
+.dd__bench-feature {
+  font-weight: 600;
+}
+
+.dd__bench-method {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font: var(--t-micro);
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 .dd__bench-num {
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -1466,10 +1483,12 @@ button.kpi-row__tile:hover {
   border: 1px solid currentColor;
 }
 
-.dd__band--Critical,
-.dd__band--High { color: var(--danger); background: rgba(var(--danger-rgb), var(--pill-wash)); }
-.dd__band--Watch { color: var(--warn); background: rgba(var(--warn-rgb), var(--pill-wash)); }
-.dd__band--Low { color: var(--good); background: rgba(var(--good-rgb), var(--pill-wash)); }
+/* Lower-case modifiers, because that is what the drawer emits (BAND_MOD) and a
+   class selector is case-sensitive: the capitalised spelling matched nothing. */
+.dd__band--critical,
+.dd__band--high { color: var(--danger); background: rgba(var(--danger-rgb), var(--pill-wash)); }
+.dd__band--watch { color: var(--warn); background: rgba(var(--warn-rgb), var(--pill-wash)); }
+.dd__band--low { color: var(--good); background: rgba(var(--good-rgb), var(--pill-wash)); }
 
 .dd__factors {
   display: grid;
@@ -1543,6 +1562,65 @@ button.kpi-row__tile:hover {
   background: var(--surface2);
   border-left: 2px solid var(--warn);
   border-radius: var(--r-sm);
+}
+
+/* Two answers to "what is driving it", side by side: the DS model's SHAP
+   attribution and this layer's observable-fact factors. Each cell names its
+   evidence in the eyebrow so a learned attribution is never read as a fact,
+   nor a fact as a model's opinion. Two columns at the drawer's full width,
+   one column once the drawer is the phone's width. */
+.dd__drivers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--s-3);
+  margin-top: var(--s-4);
+}
+
+.dd__driver {
+  padding: var(--s-3);
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+}
+
+.dd__driver-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+}
+
+.dd__driver-source {
+  color: var(--muted);
+  font: var(--t-micro);
+  text-transform: uppercase;
+  letter-spacing: var(--label-track);
+}
+
+.dd__driver-title {
+  margin-top: var(--s-2);
+  color: var(--text-2);
+  font: var(--t-label);
+}
+
+/* The DS sentence is the finding, so it carries the weight in the cell. */
+.dd__driver-text {
+  margin-top: var(--s-1);
+  font: var(--t-body-strong);
+}
+
+.dd__driver-text--none {
+  color: var(--muted);
+  font: var(--t-small);
+}
+
+.dd__driver-meta {
+  display: grid;
+  gap: 2px;
+  margin-top: var(--s-2);
+  color: var(--muted);
+  font: var(--t-small);
 }
 
 .dd__tag {

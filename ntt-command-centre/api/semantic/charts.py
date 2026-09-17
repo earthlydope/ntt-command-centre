@@ -613,22 +613,37 @@ def deal_gantt(fs: FilterState, principal: Principal, limit: int = 30) -> dict:
 
 
 def coverage_heat(fs: FilterState, principal: Principal) -> dict:
+    """
+    Coverage cell by cell, over the same forward window as the tile and the
+    bullets on the actions page — `budget.coverage_grid` is the one place the
+    numbers come from, so a line cannot read "delivered" here and 1.30x there.
+
+    A delivered cell (nothing left to deliver) has no coverage ratio, and it
+    is drawn at zero with `zero` false: the module's hatch is reserved for a
+    hole, a target with nothing behind it, which is the opposite finding.
+    """
     g = B.coverage_grid(fs, principal)
+    # `gp` and `gpBudget` are the field names the grid's coverage tooltip
+    # reads for "Pipeline GP" and "GP plan"; without them it has only the ratio.
     cells = [{"row": c["lob"], "col": c["portfolio"],
               "value": float(c["coverage"]) if c["coverage"] is not None else 0.0,
               "secondary": float(c["budgetGp"]), "secondaryLabel": "plan GP",
+              "gp": float(c["openGp"]), "gpBudget": float(c["budgetGp"]),
+              "remaining": float(c["remainingGp"]), "status": c["status"],
               "zero": bool(c["isHole"])}
              for c in g["cells"]]
     rows = sorted({c["row"] for c in cells})
     cols = sorted({c["col"] for c in cells})
     foot = g["footing"]
+    delivered = sum(1 for c in g["cells"] if c["status"] == "Delivered")
     return spec(
-        "coverage_heat", f"Coverage by line of business and portfolio — {g['quarter']}",
+        "coverage_heat", f"Coverage by line of business and portfolio — {g['window']}",
         "categorical×categorical×measure",
         {"rows": rows, "cols": cols, "cells": cells},
         says=["coverage.open.by:lob+portfolio"],
-        subtitle=f"Open GP against remaining plan · {g['holes']} cells have a target and "
-                 f"no pipeline at all",
+        subtitle=f"Open GP against the plan still to deliver from {g['window']} · "
+                 f"{g['holes']} cells have a target and no pipeline at all · "
+                 f"{delivered} already delivered",
         measure_label="Coverage", fmt="number", click_dim="lob",
         count_basis="lines", basis_note="Money is line-grain.",
         footnote=foot.get("note"),
@@ -702,7 +717,7 @@ def stalled_by_rep(fs: FilterState, principal: Principal) -> dict:
 
 def coverage_bullet(fs: FilterState, principal: Principal, dim: str) -> dict:
     """
-    Open pipeline against what the quarter still needs, one bullet per line of
+    Open pipeline against what the window still needs, one bullet per line of
     business or portfolio.
 
     The heat grid on the performance page answers "where is the hole" cell by
@@ -711,42 +726,26 @@ def coverage_bullet(fs: FilterState, principal: Principal, dim: str) -> dict:
     bar is what is there, the marker is what is needed, and the gap between
     them is the decision. Nothing is rescaled so a bar reaches its marker.
 
-    Coverage is the FORWARD question, measured the way `budget.totals` measures
-    it: plan, won and open from the current quarter onward, or from the one
-    quarter a filter names. Netting the whole year's wins against the plan
-    reads every line as delivered, because Q1 and Q2 over-delivered — true of
-    the year, and useless for a decision about the quarters still to come.
+    The rows are `budget.coverage_by`, untouched: the same forward window, the
+    same cells and the same netting as the grid and the tile, so this chart
+    holds no arithmetic of its own and cannot drift from them. Its footnote is
+    that breakdown's footing — the markers do not add up to the tile, and the
+    reader is told by how much and why.
     """
-    df = slice_frame(fs, principal)
-    cells = B.cells_quarter()
-    quarters = ([fs.quarter] if fs.quarter else
-                sorted(q for q in cells["quarter"].unique() if q >= B.CUR_QUARTER))
-    plan = cells[cells["quarter"].isin(quarters)].groupby(dim)["budget_gp"].sum()
-    won_df = subset(df, "won")
-    open_df = subset(df, "open")
-    won = won_df[won_df["fiscal_quarter"].isin(quarters)].groupby(dim)["acv_gp"].sum()
-    open_gp = open_df[open_df["fiscal_quarter"].isin(quarters)].groupby(dim)["acv_gp"].sum()
-    window = quarters[0] if len(quarters) == 1 else f"{quarters[0]} onward"
+    g = B.coverage_by(fs, principal, dim)
+    window = g["window"]
     label = REGISTRY[dim].label
-    rows = []
-    for key in plan.sort_values(ascending=False).index:
-        b = float(plan[key])
-        w = float(won.get(key, 0.0))
-        o = float(open_gp.get(key, 0.0))
-        remaining = max(b - w, 0.0)
-        c = (o / remaining) if remaining else None
-        if remaining <= 0:
-            status, tone = "Delivered", "good"
-        elif c >= 1.0:
-            status, tone = "Covered", "good"
-        elif c >= 0.5:
-            status, tone = "Thin", "warn"
-        else:
-            status, tone = "Uncovered", "danger"
-        rows.append({"key": str(key), "value": o, "target": remaining,
-                     "coverage": c, "budgetGp": b, "wonGp": w,
-                     "status": status, "tone": tone})
+    rows = [{"key": r["key"], "value": r["openGp"], "target": r["remainingGp"],
+             "coverage": r["coverage"], "budgetGp": r["budgetGp"], "wonGp": r["wonGp"],
+             "status": r["status"], "tone": r["tone"]}
+            for r in g["rows"]]
     uncovered = sum(1 for r in rows if r["status"] == "Uncovered")
+    # The entity-grain caveat only matters to a persona whose pipeline is a
+    # part of the book; the executive's pipeline IS the entity's.
+    notes = [g["footing"].get("note")]
+    if principal.predicate:
+        notes.append("Plan exists at entity grain only; this scope's own pipeline is "
+                     "read against the whole entity's target.")
     return spec(
         f"coverage_{dim}",
         f"Open pipeline against remaining plan by {label.lower()} — {window}",
@@ -757,8 +756,7 @@ def coverage_bullet(fs: FilterState, principal: Principal, dim: str) -> dict:
         measure_label="ACV GP", click_dim=dim,
         encoding={"x": "key", "y": "value", "target": "target"},
         count_basis="lines", basis_note="Money is line-grain.",
-        footnote="Plan exists at entity grain only; a scoped persona sees its "
-                 "own pipeline against the whole entity's target.",
+        footnote=" ".join(n for n in notes if n) or None,
         questions=["Where is there a target with no pipeline?",
                    "Which area is furthest behind?",
                    "How much plan is left this quarter?"],
@@ -766,7 +764,9 @@ def coverage_bullet(fs: FilterState, principal: Principal, dim: str) -> dict:
 
 
 def anomaly_by_category(fs: FilterState, principal: Principal) -> dict:
-    a = ANOM.for_persona(principal.key)
+    # The same grain-by-grain row-level rule the findings list uses, so the
+    # bars and the cards beneath them are the same rows.
+    a = ANOM.scoped(ANOM.for_persona(principal.key), fs, principal)
     g = a.groupby("category").agg(value=("value_at_stake", "sum"),
                                   n=("anomaly_id", "count")).reset_index()
     g = g.sort_values("value", ascending=False)

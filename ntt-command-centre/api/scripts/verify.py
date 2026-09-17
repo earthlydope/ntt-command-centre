@@ -144,6 +144,40 @@ def main() -> int:
     assert_true("a finding drills to its own change-log rows", len(ev) > 0,
                 f"{len(ev)} rows behind the top finding")
 
+    # Findings obey the same row-level rule as the figures, at EVERY grain.
+    # Routing says which findings a role can act on; scoping says which of
+    # those this caller may see. Narrowed at opportunity grain alone, an AE
+    # with 44 findings of their own was handed 121, 74 of them account
+    # findings for accounts they hold no line at.
+    ae_routed = ANOM.for_persona("ae")
+    ae_find = ANOM.scoped(ae_routed, fs, ae)
+    ae_frame = M.slice_frame(fs, ae)
+    ae_accounts = set(ae_frame["account_code"]) | set(ae_frame["account_name"])
+    acc_ids = ae_find.loc[ae_find["entity_type"] == "Account", "entity_id"]
+    assert_true("an AE's account findings are all at their own accounts",
+                acc_ids.isin(ae_accounts).all(),
+                f"{len(acc_ids)} account findings, {len(ae_find)} of {len(ae_routed)} routed")
+    opp_ids = ae_find.loc[ae_find["entity_type"] == "Opportunity", "entity_id"]
+    assert_true("an AE's opportunity findings are their own deals",
+                opp_ids.isin(set(ae_frame["opportunity_code"])).all(),
+                f"{len(opp_ids)} opportunity findings")
+    assert_true("an AE's rep findings name nobody else",
+                set(ae_find.loc[ae_find["entity_type"] == "Rep", "entity_id"])
+                <= {"Brian Thompson"})
+    assert_true("an AE sees no entity-wide finding",
+                not ae_find["entity_type"].isin(ANOM.ENTITY_GRAINS).any())
+    assert_true("scoping narrows the AE's list without emptying it",
+                0 < len(ae_find) < len(ae_routed), f"{len(ae_find)} of {len(ae_routed)}")
+    mgr_find = ANOM.scoped(ANOM.for_persona("manager"), fs, mgr)
+    pod_reps = set(mgr.predicate["owner"])
+    assert_true("a manager's rep findings are all reps in the pod",
+                set(mgr_find.loc[mgr_find["entity_type"] == "Rep", "entity_id"]) <= pod_reps,
+                f"{int((mgr_find['entity_type'] == 'Rep').sum())} rep findings")
+    exec_find = ANOM.scoped(ANOM.for_persona("executive"), fs, exec_p)
+    assert_true("the executive's list is not narrowed",
+                len(exec_find) == len(ANOM.for_persona("executive")),
+                f"{len(exec_find)} findings")
+
     print("\n── USE CASE 2 · DEAL CLOSURE LIKELIHOOD ─────────────────────────────")
     assert_true("the DS closure model is ingested", DS.available())
     card = P.model_card()
@@ -154,6 +188,14 @@ def main() -> int:
     check("every open deal is scored", len(cp), 235)
     assert_true("probability comes from the DS model",
                 (cp["p_win_source"] == "ds-model").all())
+    # Scoring every deal is not the same as showing the driver: the SHAP
+    # sentence and the risk bucket must reach the deal payload, or the AE
+    # sees a probability with nothing behind it.
+    d = P.explain("006DSZH24T84Q57D9A")
+    check("the DS P(win) reaches the deal payload", round(d["pWin"], 4), 0.1193)
+    assert_true("the DS driver is shown with its probability",
+                bool(d.get("drivingForce")) and d.get("riskBucketLabel") is not None,
+                f"{d.get('drivingForce')!r} / {d.get('riskBucketLabel')!r}")
     assert_true("an independent reproduction is reported beside it",
                 0.5 < card["independent"]["holdoutAuc"] < 0.75,
                 f"independent holdout AUC {card['independent']['holdoutAuc']}")
@@ -239,6 +281,29 @@ def main() -> int:
     assert_true("the plan's footing gap is disclosed, not hidden",
                 "cellsPresent" in grid["footing"],
                 f"{grid['footing']['cellsPresent']} of {grid['footing']['cellsPossible']} cells")
+    # One definition of coverage: the per-line rows and the grid are rolled up
+    # from the same cells over the same forward window, so a line's bullet on
+    # the actions page and its cells on the performance page must agree.
+    by_lob = B.coverage_by(fs, exec_p, "lob")
+    net = next(r for r in by_lob["rows"] if r["key"] == "Networking")
+    check("Networking coverage, forward window", round(net["coverage"], 2), 1.30)
+    net_cells = [c for c in grid["cells"] if c["lob"] == "Networking"]
+    rollup = (sum(c["openGp"] for c in net_cells)
+              / max(sum(c["budgetGp"] for c in net_cells) - sum(c["wonGp"] for c in net_cells), 1))
+    check("the grid's Networking cells roll up to the bullet's figure",
+          round(rollup, 4), round(net["coverage"], 4))
+    check("grid and rows share one window", by_lob["window"], grid["window"])
+    check("cells present counts quarter cells, not rows", by_lob["footing"]["cellsPresent"], 33)
+    check("the LOB rows' remaining plan ($K)", round(by_lob["footing"]["remainingRowSum"] / 1e3), 317)
+    check("against the tile's remaining plan ($K)", round(by_lob["footing"]["remainingEntity"] / 1e3), 370)
+    assert_true("a breakdown that does not foot says so in words",
+                bool(by_lob["footing"]["note"]) and "$317K" in by_lob["footing"]["note"],
+                by_lob["footing"]["note"])
+    bullet = C.coverage_bullet(fs, exec_p, "lob")
+    assert_true("the actions-page bullet prints that footing",
+                by_lob["footing"]["note"] in (bullet["footnote"] or ""))
+    assert_true("a hole is a target still open with nothing behind it",
+                all(c["remainingGp"] > 0 and c["openGp"] <= 0 for c in grid["cells"] if c["isHole"]))
 
     print("\n── PERSONAS, PAGES AND CHARTS ───────────────────────────────────────")
     check("pages", len(V.PAGES), 15)

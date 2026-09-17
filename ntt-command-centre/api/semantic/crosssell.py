@@ -160,6 +160,20 @@ def unified(fs: FilterState, principal: Principal, limit: int = 60) -> list[dict
     if df.empty:
         return []
 
+    # The owner named on the card is resolved from the SCOPED rows, not the
+    # entity's. The rows are already the principal's own, so the person named
+    # must be one the principal can act through: resolved entity-wide, a
+    # manager was told an idea at a shared account was "owned by Steven Cook"
+    # — the account's largest line sat with a rep in another pod — and a rep
+    # was told their own account belonged to someone else. The same rule as
+    # `recommendations()`, the owner of the largest line, applied to the rows
+    # in view; the entity-wide owner is the fallback only where the scope
+    # holds no line at the account, which the code check above rules out but
+    # is kept so the column is never blank.
+    in_scope = (scoped.groupby(["account_code", "owner"])["acv_gp"].sum()
+                .reset_index().sort_values("acv_gp", ascending=False)
+                .drop_duplicates("account_code").set_index("account_code")["owner"])
+
     native = _native_missing()
     out: list[dict] = []
     for r in df.itertuples(index=False):
@@ -170,7 +184,7 @@ def unified(fs: FilterState, principal: Principal, limit: int = 60) -> list[dict
             "accountCode": r.account_code,
             "accountName": r.account_name,
             "industry": r.industry,
-            "owner": r.owner,
+            "owner": in_scope.get(r.account_code, r.owner),
             "offering": r.offering,
             "lob": r.rec_lob,
             "portfolio": r.rec_portfolio,

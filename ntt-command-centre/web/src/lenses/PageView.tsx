@@ -497,6 +497,10 @@ function DealsBlock({ extras }: { extras: Row }) {
                   Risk
                 </th>
                 <th scope="col">Top driver</th>
+                {/* The DS model's SHAP driver beside this layer's own: two
+                    answers to "what is driving it" from different evidence,
+                    worded by the server. */}
+                <th scope="col">DS driver</th>
                 <th scope="col" className="pv-num">
                   Quiet
                 </th>
@@ -537,6 +541,7 @@ function DealsBlock({ extras }: { extras: Row }) {
                       </span>
                     </td>
                     <td className="pv-table__driver">{text(d, "topDriver") ?? "—"}</td>
+                    <td className="pv-table__driver">{text(d, "dsDriver") ?? "—"}</td>
                     <td className="pv-num">
                       {number(d, "quietDays") === null
                         ? "—"

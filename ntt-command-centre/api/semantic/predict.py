@@ -356,9 +356,23 @@ def closure_probability() -> pd.DataFrame:
     else:
         df["p_win"] = df["p_win_independent"]
         df["p_win_source"] = "independent"
-        for c in ("risk_bucket_label", "risk_bucket_relative_label", "driving_force",
-                  "driver_feature", "driver_direction", "stage_at_cutoff"):
+        for c in ("risk_bucket", "risk_bucket_label", "risk_bucket_relative",
+                  "risk_bucket_relative_label", "driving_force", "driver_feature",
+                  "driver_direction", "stage_at_cutoff"):
             df[c] = None
+
+    # The SHAP driver in the workbook's own words for the feature, and a
+    # one-line form for a table cell. The full sentence ("Stage progression
+    # (Identification) decreased win probability the most") is what the drawer
+    # prints; a deal list has room for "Stage reached · lowers pWin" and no
+    # more. Both are None where the DS drop does not cover the deal, so the UI
+    # can say so rather than print a driver that belongs to no model.
+    df["driver_label"] = df["driver_feature"].map(ds_model.FEATURE_LABEL)
+    df["ds_driver"] = [
+        f"{label} · {'lifts' if direction == 'up' else 'lowers'} pWin"
+        if isinstance(label, str) and isinstance(direction, str) else None
+        for label, direction in zip(df["driver_label"], df["driver_direction"])
+    ]
 
     df["p_win_segment"] = df.set_index(["lob", "order_type"]).index.map(
         segment_base_rates().set_index(["lob", "order_type"])["win_rate"]
@@ -493,12 +507,34 @@ def explain(opportunity_code: str) -> dict | None:
     }
     if not prow.empty:
         pr = prow.iloc[0]
+
+        def text(col: str) -> str | None:
+            # A deal the DS drop lacks carries NaN in every mapped column, and
+            # NaN would reach the page as the string "nan" or as JSON null by
+            # accident of serialisation. Only a real string is a driver.
+            v = pr[col]
+            return v if isinstance(v, str) and v else None
+
         out |= {
             "pWin": float(pr["p_win"]),
             "pWinSegment": float(pr["p_win_segment"]) if pd.notna(pr["p_win_segment"]) else None,
             "repConfidence": float(pr["rep_confidence"]),
             "confidenceGap": float(pr["confidence_gap"]),
             "expectedGp": float(pr["expected_gp"]),
+            # The DS model's own account of its number. pWin without the
+            # variable that moved it is exactly the "likelihood" surface the
+            # client said was not enough; the SHAP sentence is their answer
+            # to "what is driving it", carried verbatim beside this layer's
+            # own risk factors rather than merged into them.
+            "pWinSource": pr["p_win_source"],
+            "drivingForce": text("driving_force"),
+            "driverFeature": text("driver_feature"),
+            "driverLabel": text("driver_label"),
+            "driverDirection": text("driver_direction"),
+            "dsDriver": text("ds_driver"),
+            "riskBucket": int(pr["risk_bucket"]) if pd.notna(pr["risk_bucket"]) else None,
+            "riskBucketLabel": text("risk_bucket_label"),
+            "riskBucketRelativeLabel": text("risk_bucket_relative_label"),
         }
     return out
 
