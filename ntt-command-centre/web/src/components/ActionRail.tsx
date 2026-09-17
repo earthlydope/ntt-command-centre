@@ -643,7 +643,9 @@ export function ActionRail({
           </button>
         </div>
       ) : (
-        <ul className="arail-list" ref={listRef}>
+        // While one card is open the list says so, and the stylesheet softens
+        // every other card so the eye stays on the chosen one and its detail row.
+        <ul className="arail-list" ref={listRef} data-focused={expandedKey ? "true" : undefined}>
           {items}
         </ul>
       )}

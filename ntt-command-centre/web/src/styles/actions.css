@@ -255,6 +255,39 @@
   box-shadow: var(--elev-1);
 }
 
+/* One card open: the others step back — softened and slightly blurred —
+   so the chosen card and its detail row are the only sharp things in the
+   section. They stay clickable, so switching cards is one click; the blur
+   lifts the moment the pointer arrives so the target reads before it is hit.
+   The transition rides the same --dur token as everything else. */
+.arail-card {
+  transition:
+    transform var(--dur-slow) var(--ease),
+    border-color var(--dur) var(--ease),
+    background-color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease),
+    filter var(--dur) var(--ease),
+    opacity var(--dur) var(--ease);
+}
+
+.arail-list[data-focused] .arail-card:not(.is-open):not(.arail-detail) {
+  filter: blur(1.5px) saturate(0.7);
+  opacity: 0.55;
+}
+
+.arail-list[data-focused] .arail-card:not(.is-open):hover,
+.arail-list[data-focused] .arail-card:not(.is-open):focus-within {
+  filter: none;
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arail-list[data-focused] .arail-card:not(.is-open):not(.arail-detail) {
+    filter: none;
+    opacity: 0.6;
+  }
+}
+
 .arail-card.is-open {
   border-color: rgba(var(--arail-tone-rgb), 0.55);
   border-left-color: var(--arail-tone);
