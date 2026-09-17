@@ -305,6 +305,80 @@ def main() -> int:
     assert_true("a hole is a target still open with nothing behind it",
                 all(c["remainingGp"] > 0 and c["openGp"] <= 0 for c in grid["cells"] if c["isHole"]))
 
+    print("\n── THE MEASURE TOGGLE ───────────────────────────────────────────────")
+    # The customer's words: "Profit and revenue both is showing the same data."
+    # The Show: Profit / Revenue toggle used to change the label and nothing
+    # else. A plain money aggregate must now move with it and say which money
+    # it is; a figure read against the plan must NOT move, because the plan is
+    # set in gross profit, and must say so.
+    rev = M.FilterState(measure="revenue")
+    gp_tiles = {t["key"]: t for t in V.view("tldr", fs, exec_p)["kpis"]}
+    rev_tiles = {t["key"]: t for t in V.view("tldr", rev, exec_p)["kpis"]}
+    for key in ("open", "won"):
+        assert_true(f"executive brief '{key}' tile follows the measure",
+                    rev_tiles[key]["value"] != gp_tiles[key]["value"]
+                    and "revenue" in rev_tiles[key]["sub"]
+                    and "revenue" not in gp_tiles[key]["sub"],
+                    f"{gp_tiles[key]['formatted']} GP → {rev_tiles[key]['formatted']} revenue")
+    check("revenue open pipeline is the revenue column",
+          round(rev_tiles["open"]["value"]), round(m["open"]["revenue"]))
+    check("revenue won is the revenue column",
+          round(rev_tiles["won"]["value"]), round(m["won"]["revenue"]))
+    assert_true("the revenue won tile says where the plan lives",
+                "gross profit" in rev_tiles["won"]["sub"], rev_tiles["won"]["sub"])
+    # The sparkline is a month-end reconstruction, not today's snapshot, so it
+    # is checked as a series: a revenue line sits above the GP line at every
+    # month, and is not the GP line relabelled.
+    gs, rs = gp_tiles["open"]["spark"], rev_tiles["open"]["spark"]
+    assert_true("the revenue open tile's sparkline is a revenue series",
+                len(rs) == len(gs) > 0 and rs != gs and all(r >= g for r, g in zip(rs, gs)),
+                f"{len(rs)} points, last {M.money(rs[-1]) if rs else '—'} against "
+                f"{M.money(gs[-1]) if gs else '—'} GP")
+    assert_true("the coverage tile stays gross profit and says so",
+                rev_tiles["cover"]["value"] == gp_tiles["cover"]["value"]
+                and "gross profit" in rev_tiles["cover"]["sub"],
+                rev_tiles["cover"]["sub"])
+    gp_ch = {c["id"]: c for c in V.charts_for("structure", fs, exec_p)}
+    rev_ch = {c["id"]: c for c in V.charts_for("structure", rev, exec_p)}
+    for cid in ("account_treemap", "industry_flow"):
+        assert_true(f"{cid} is drawn in revenue when asked",
+                    rev_ch[cid]["data"] != gp_ch[cid]["data"]
+                    and rev_ch[cid]["measureLabel"] == "ACV Revenue"
+                    and gp_ch[cid]["measureLabel"] == "ACV GP"
+                    and all(k.startswith("rev.") for k in rev_ch[cid]["says"]),
+                    f"says {rev_ch[cid]['says']}")
+    top = next(n for n in rev_ch["account_treemap"]["data"]["nodes"] if n["id"] != "root")
+    check("the revenue treemap's largest tile is that account's revenue",
+          round(top["value"]),
+          round(M.slice_frame(fs, exec_p).groupby("account_code")["acv_revenue"].sum().max()))
+    for fn in (C.gp_bridge, C.month_vs_plan, C.coverage_heat):
+        a, b = fn(fs, exec_p), fn(rev, exec_p)
+        assert_true(f"{a['id']} is plan-based and does not move with the toggle",
+                    a["data"] == b["data"] and "gross profit" in b["subtitle"].lower()
+                    and not any(k.startswith("rev.") for k in b["says"]),
+                    b["subtitle"][:70])
+    check("coverage is identical under either measure",
+          B.totals(rev, exec_p)["coverage"], B.totals(fs, exec_p)["coverage"])
+    ae_gp = {t["key"]: t for t in V.view("my-day", fs, ae)["kpis"]}
+    ae_rev = {t["key"]: t for t in V.view("my-day", rev, ae)["kpis"]}
+    assert_true("the AE's open pipeline tile switches to revenue",
+                ae_rev["open"]["label"] == "Open pipeline"
+                and ae_rev["open"]["value"] != ae_gp["open"]["value"]
+                and round(ae_rev["open"]["value"]) == round(ae_m["open"]["revenue"])
+                and "revenue" in ae_rev["open"]["sub"],
+                f"{ae_gp['open']['formatted']} GP → {ae_rev['open']['formatted']} revenue")
+    check("the AE's at-risk tile sums the same band in revenue",
+          round(ae_rev["at_risk"]["value"]),
+          round(P.risk_table().pipe(
+              lambda r: r[r["opportunity_code"].isin(set(M.slice_frame(fs, ae)["opportunity_code"]))
+                          & r["risk_band"].isin(("High", "Critical"))])["acv_revenue"].sum()))
+    # The growth page's biggest play is a count of customers, not a headline.
+    big = next(t for t in V.view("growth", fs, exec_p)["kpis"] if t["key"] == "biggest")
+    assert_true("the biggest play is stated as a number of customers",
+                big["formatted"].isdigit() and int(big["formatted"]) == int(big["value"])
+                and "owners" in big["sub"],
+                f"{big['formatted']} · {big['sub']}")
+
     print("\n── PERSONAS, PAGES AND CHARTS ───────────────────────────────────────")
     check("pages", len(V.PAGES), 15)
     for key in PR.PERSONA_KEYS:

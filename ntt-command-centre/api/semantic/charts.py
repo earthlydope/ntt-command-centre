@@ -22,6 +22,15 @@ chart; a mekko because size, mix and margin are three facts that belong in one
 picture; a gantt because "has this deal run out of road" is a statement about a
 bar and a date. Where a type has no honest use on this data it is not built —
 there is no radar chart and no pie.
+
+**The measure toggle is honoured, not echoed.** A chart whose marks are plain
+money aggregates — open, won, stalled, at risk, by account, by industry, the
+treemap, the flow, the gantt — sums `fs.value_column`, labels itself with
+`fs.measure_label` and claims `gp.*` or `rev.*` accordingly. A chart drawn
+against the plan (the bridge, month against plan, coverage, the bullets) is
+gross profit whichever way the toggle sits, because the plan is set in GP,
+and its subtitle says so rather than leaving the reader to wonder why it did
+not move.
 """
 
 from __future__ import annotations
@@ -39,6 +48,9 @@ from . import predict as P
 from .dimensions import REGISTRY
 from .loader import AS_OF, STAGE_ORDER, facts, opportunities
 from .measures import (
+    MEASURE_LABEL,
+    MEASURE_WORD,
+    VALUE_COLUMN,
     FilterState,
     by_dimension,
     by_time,
@@ -218,7 +230,7 @@ def ageing_stack(fs: FilterState, principal: Principal) -> dict:
     series_names = [c for c in ("Commit", "Best Case", "Pipeline", "Omitted")
                     if (df["forecast_category"] == c).any()]
     piv = df.pivot_table(index="band", columns="forecast_category",
-                         values="acv_gp" if fs.measure == "gp" else "acv_revenue",
+                         values=fs.value_column,
                          aggfunc="sum", fill_value=0.0)
     return spec(
         "ageing_stack", "Open pipeline by how overdue it is",
@@ -250,7 +262,8 @@ def gp_bridge(fs: FilterState, principal: Principal) -> dict:
     return spec(
         "gp_bridge", "FY26 gross profit — plan to position", "bridge", steps,
         says=["gap.all.by:quarter", "gp.won.by:quarter"],
-        subtitle="Plan, what each quarter delivered, what is still open",
+        subtitle="Plan, what each quarter delivered, what is still open · gross "
+                 "profit, the basis the plan is set in",
         measure_label="ACV GP",
         footnote=next((s.get("note") for s in steps if s.get("note")), None),
         height=300,
@@ -273,7 +286,8 @@ def month_vs_plan(fs: FilterState, principal: Principal) -> dict:
                     for r in rows],
          "barLabel": "Won GP", "lineLabel": "Plan GP", "lineFormat": "currency"},
         says=["gp.won.t:month", "budget.all.t:month"],
-        subtitle="Bars are delivered gross profit; the line is plan",
+        subtitle="Bars are delivered gross profit; the line is the plan, which is "
+                 "set in gross profit",
         measure_label="ACV GP",
         footnote="October to December carry a plan but no closed history — the year "
                  "has not reached them. Their red is a calendar position.",
@@ -304,7 +318,7 @@ def stage_funnel(fs: FilterState, principal: Principal) -> dict:
     ladder = [s for s in STAGE_ORDER if s not in ("Deal Won", "Deal Lost")]
 
     o = opportunities().set_index("opportunity_code")
-    value_col = "acv_gp" if fs.measure == "gp" else "acv_revenue"
+    value_col = fs.value_column
 
     # "Reached this stage" means got AT LEAST this far, which is the only
     # definition that is monotone in the presence of stage skipping — and 73
@@ -361,20 +375,26 @@ def deal_triage_bubble(fs: FilterState, principal: Principal) -> dict:
     codes = set(slice_frame(fs, principal)["opportunity_code"])
     r = r[r["opportunity_code"].isin(codes)]
     tone = {"Critical": "danger", "High": "danger", "Watch": "warn", "Low": "good"}
+    # The vertical axis is the active measure; the bubble area is the other
+    # one, so both money facts stay on the picture whichever way the toggle sits.
+    other = "revenue" if fs.measure == "gp" else "gp"
+    other_col, other_label = VALUE_COLUMN[other], MEASURE_LABEL[other]
     return spec(
         "deal_triage", "Open deals — silence against value",
         "x×y×size",
         {"points": [{"id": row.opportunity_code, "label": row.opportunity_name,
-                     "x": float(row.quiet_days or 0), "y": float(row.acv_gp),
-                     "size": float(row.acv_revenue),
+                     "x": float(row.quiet_days or 0),
+                     "y": float(getattr(row, fs.value_column)),
+                     "size": float(getattr(row, other_col)),
                      "category": row.risk_band,
                      "tone": tone.get(row.risk_band, "neutral")}
                     for row in r.itertuples(index=False)],
-         "xLabel": "Days since last logged change", "yLabel": "ACV GP",
-         "sizeLabel": "ACV revenue", "xFormat": "days", "yFormat": "currency"},
+         "xLabel": "Days since last logged change", "yLabel": fs.measure_label,
+         "sizeLabel": other_label, "xFormat": "days", "yFormat": "currency"},
         says=["risk.open.by:riskband", "quietdays.open.by:account"],
-        subtitle=f"{len(r):,} open opportunities · bubble area is revenue",
-        measure_label="ACV GP",
+        subtitle=f"{len(r):,} open opportunities · height is {fs.measure_word}, "
+                 f"bubble area is {MEASURE_WORD[other]}",
+        measure_label=fs.measure_label,
         count_basis="opportunities",
         basis_note="One bubble per opportunity, not per line.",
         footnote=f"Median lines mark the quadrants. Anything right of the {STALL_DAYS}-day "
@@ -432,25 +452,40 @@ def margin_mekko(fs: FilterState, principal: Principal) -> dict:
     )
 
 
-def account_treemap(fs: FilterState, principal: Principal) -> dict:
-    """How concentrated the book is. Tail grouped, because one account is 14.5%."""
-    c = ACC.concentration(fs, principal, top=20)
+def account_treemap(fs: FilterState, principal: Principal, top: int = 20) -> dict:
+    """
+    How concentrated the book is. Tail grouped, because one account is 14.5%.
+
+    Summed here on the active measure rather than read from
+    `accounts.concentration`, whose shares are gross profit by definition —
+    the basis the plan is set in. The picture is the same rule applied to
+    whichever money the reader asked to see: top accounts named, the tail
+    folded into one tile.
+    """
+    df = slice_frame(fs, principal)
+    acc = (df.groupby(["account_code", "account_name"])[fs.value_column].sum()
+           .reset_index(name="value").sort_values("value", ascending=False))
+    total = float(acc["value"].sum())
+    acc["share"] = 100 * acc["value"] / total if total else 0.0
+    head, tail = acc.head(top), acc.iloc[top:]
     nodes = [{"id": "root", "label": "North America", "parent": None, "value": 0.0}]
-    for a in c["accounts"]:
-        nodes.append({"id": a["account_code"], "label": a["account_name"],
-                      "parent": "root", "value": float(a["gp"]),
-                      "secondary": float(a["share"])})
-    if c["accountsBeyondTop"] > 0:
+    for a in head.itertuples(index=False):
+        nodes.append({"id": a.account_code, "label": a.account_name,
+                      "parent": "root", "value": float(a.value),
+                      "secondary": float(a.share)})
+    if len(tail):
         nodes.append({"id": "__other__",
-                      "label": f"Other ({c['accountsBeyondTop']} accounts)",
-                      "parent": "root", "value": float(c["accountsBeyondTopGp"]),
+                      "label": f"Other ({len(tail)} accounts)",
+                      "parent": "root", "value": float(tail["value"].sum()),
                       "tone": "neutral"})
+    top_share = float(acc["share"].iloc[0]) if len(acc) else 0.0
     return spec(
-        "account_treemap", "Gross profit by account", "hierarchy×measure",
-        {"nodes": nodes},
-        says=["gp.all.by:account"],
-        subtitle=f"Top 20 named · largest account is {c['topAccountShare']:.1f}% of the book",
-        measure_label="ACV GP", click_dim="account",
+        "account_treemap", f"{fs.measure_word.capitalize()} by account",
+        "hierarchy×measure", {"nodes": nodes},
+        says=[f"{_measure_key(fs)}.all.by:account"],
+        subtitle=f"{fs.measure_label} · top {top} named · largest account is "
+                 f"{top_share:.1f}% of the book",
+        measure_label=fs.measure_label, click_dim="account",
         count_basis="lines", basis_note="Money is line-grain.",
         footnote="The tail is grouped deliberately. Drawn ungrouped, one tile would "
                  "take a seventh of the area and the rest would be unreadable.",
@@ -464,7 +499,8 @@ def account_treemap(fs: FilterState, principal: Principal) -> dict:
 def industry_flow(fs: FilterState, principal: Principal) -> dict:
     """Which verticals feed which lines of business, and how they end."""
     df = slice_frame(fs, principal)
-    top_ind = (df.groupby("industry")["acv_gp"].sum()
+    col = fs.value_column
+    top_ind = (df.groupby("industry")[col].sum()
                .sort_values(ascending=False).head(6).index.tolist())
     d = df.copy()
     d["ind"] = np.where(d["industry"].isin(top_ind), d["industry"], "Other industries")
@@ -484,29 +520,30 @@ def industry_flow(fs: FilterState, principal: Principal) -> dict:
         nodes.append(n)
 
     links: list[dict] = []
-    a = d.groupby(["ind", "lob"])["acv_gp"].sum().reset_index()
+    a = d.groupby(["ind", "lob"])[col].sum().reset_index(name="value")
     for r in a.itertuples(index=False):
-        if r.acv_gp <= 0:
+        if r.value <= 0:
             continue
         node(f"i:{r.ind}", r.ind, 0)
         node(f"l:{r.lob}", r.lob, 1)
         links.append({"source": f"i:{r.ind}", "target": f"l:{r.lob}",
-                      "value": float(r.acv_gp)})
-    b = d.groupby(["lob", "outcome"])["acv_gp"].sum().reset_index()
+                      "value": float(r.value)})
+    b = d.groupby(["lob", "outcome"])[col].sum().reset_index(name="value")
     tones = {"Won": "good", "Lost": "danger", "Open": "warn"}
     for r in b.itertuples(index=False):
-        if r.acv_gp <= 0:
+        if r.value <= 0:
             continue
         node(f"l:{r.lob}", r.lob, 1)
         node(f"o:{r.outcome}", r.outcome, 2, tones.get(r.outcome))
         links.append({"source": f"l:{r.lob}", "target": f"o:{r.outcome}",
-                      "value": float(r.acv_gp), "tone": tones.get(r.outcome)})
+                      "value": float(r.value), "tone": tones.get(r.outcome)})
+    mk = _measure_key(fs)
     return spec(
         "industry_flow", "Industry to line of business to outcome",
         "source×target×measure", {"nodes": nodes, "links": links},
-        says=["gp.all.by:industry+lob", "gp.all.by:lob+stage"],
-        subtitle="Ribbon width is gross profit · top six industries named",
-        measure_label="ACV GP",
+        says=[f"{mk}.all.by:industry+lob", f"{mk}.all.by:lob+stage"],
+        subtitle=f"Ribbon width is {fs.measure_word} · top six industries named",
+        measure_label=fs.measure_label,
         count_basis="lines", basis_note="Money is line-grain.",
         footnote="Won and Lost are settled; Open is still in play and is not a result.",
         height=400,
@@ -586,7 +623,7 @@ def deal_gantt(fs: FilterState, principal: Principal, limit: int = 30) -> dict:
             "sublabel": f"{row.stage} · {row.owner}",
             "start": row.create_date.date().isoformat(),
             "end": row.close_date.date().isoformat(),
-            "value": float(row.acv_gp),
+            "value": float(getattr(row, fs.value_column)),
             "tone": tone.get(row.risk_band, "accent"),
             "pastDue": bool(row.is_past_due),
             "stalled": bool(row.quiet_days >= STALL_DAYS) if pd.notna(row.quiet_days) else False,
@@ -599,8 +636,9 @@ def deal_gantt(fs: FilterState, principal: Principal, limit: int = 30) -> dict:
         {"bars": bars, "asOf": AS_OF.isoformat(),
          "rangeStart": min(starts), "rangeEnd": max(max(ends), AS_OF.isoformat())},
         says=["risk.open.by:account"],
-        subtitle=f"{len(bars)} highest-risk open deals · create date to close date",
-        measure_label="ACV GP",
+        subtitle=f"{len(bars)} highest-risk open deals · create date to close date · "
+                 f"{fs.measure_label}",
+        measure_label=fs.measure_label,
         count_basis="opportunities",
         basis_note="One bar per opportunity.",
         footnote="The red tail is time already overrun. Hatching means no field has "
@@ -641,7 +679,7 @@ def coverage_heat(fs: FilterState, principal: Principal) -> dict:
         "categorical×categorical×measure",
         {"rows": rows, "cols": cols, "cells": cells},
         says=["coverage.open.by:lob+portfolio"],
-        subtitle=f"Open GP against the plan still to deliver from {g['window']} · "
+        subtitle=f"Open gross profit against the plan still to deliver from {g['window']} · "
                  f"{g['holes']} cells have a target and no pipeline at all · "
                  f"{delivered} already delivered",
         measure_label="Coverage", fmt="number", click_dim="lob",
@@ -660,15 +698,19 @@ def risk_by_band(fs: FilterState, principal: Principal) -> dict:
     r = r[r["opportunity_code"].isin(codes)]
     order = ["Critical", "High", "Watch", "Low"]
     tones = {"Critical": "danger", "High": "danger", "Watch": "warn", "Low": "good"}
-    g = r.groupby("risk_band").agg(value=("acv_gp", "sum"), opps=("opportunity_code", "count"))
+    # The band is a score on observable facts and does not move with the
+    # toggle; the money inside each band does.
+    g = r.groupby("risk_band").agg(value=(fs.value_column, "sum"),
+                                   opps=("opportunity_code", "count"))
     return spec(
         "risk_by_band", "Open pipeline by risk band", "categorical×measure",
         [{"key": b, "value": float(g["value"].get(b, 0.0)),
           "opps": int(g["opps"].get(b, 0)), "tone": tones[b]}
          for b in order if b in g.index],
-        says=["gp.open.by:riskband"],
-        subtitle="Risk is computed from observable facts, not learned",
-        measure_label="ACV GP", click_dim="riskBand",
+        says=[f"{_measure_key(fs)}.open.by:riskband"],
+        subtitle=f"{fs.measure_label} in each band · risk is computed from observable "
+                 "facts, not learned",
+        measure_label=fs.measure_label, click_dim="riskBand",
         count_basis="opportunities", basis_note="One count per opportunity.",
         height=240,
         questions=["What makes a deal high risk?",
@@ -690,7 +732,7 @@ def stalled_by_rep(fs: FilterState, principal: Principal) -> dict:
     codes = set(slice_frame(fs, principal)["opportunity_code"])
     r = r[r["opportunity_code"].isin(codes) & (r["quiet_days"] >= STALL_DAYS)]
     g = (r.groupby("owner")
-         .agg(value=("acv_gp", "sum"), opps=("opportunity_code", "count"),
+         .agg(value=(fs.value_column, "sum"), opps=("opportunity_code", "count"),
               quiet=("quiet_days", "median"))
          .sort_values("value", ascending=False).head(12))
     return spec(
@@ -699,10 +741,10 @@ def stalled_by_rep(fs: FilterState, principal: Principal) -> dict:
           "quietDays": int(row.quiet) if row.quiet == row.quiet else None,
           "tone": "danger" if row.opps >= 5 else "warn"}
          for rep, row in g.iterrows()],
-        says=["gp.stalled.by:rep"],
-        subtitle=f"Open gross profit with no logged change in {STALL_DAYS}+ days · "
+        says=[f"{_measure_key(fs)}.stalled.by:rep"],
+        subtitle=f"Open {fs.measure_word} with no logged change in {STALL_DAYS}+ days · "
                  f"{len(r):,} deals",
-        measure_label="ACV GP", click_dim="rep",
+        measure_label=fs.measure_label, click_dim="rep",
         count_basis="opportunities", basis_note="One count per opportunity.",
         empty_message="Nothing in this scope has been silent for "
                       f"{STALL_DAYS} days or more.",
@@ -841,7 +883,11 @@ def whitespace_table(fs: FilterState, principal: Principal) -> dict:
         "whitespace", "Accounts with room to grow", "table",
         {"columns": [
             {"key": "accountName", "label": "Account", "align": "left"},
-            {"key": "gp", "label": "Current GP", "format": "currency", "align": "right"},
+            # What the account is worth today follows the toggle; the peer
+            # estimate two columns over is a gross-profit median by
+            # construction (`accounts.whitespace`) and keeps its GP label.
+            {"key": fs.measure, "label": f"Current {fs.measure_label}",
+             "format": "currency", "align": "right"},
             {"key": "holdsLabel", "label": "Buys today", "align": "left"},
             {"key": "recommendedLob", "label": "Not buying", "align": "left"},
             {"key": "peerAttachRatePct", "label": "Peer attach", "format": "percent",
@@ -851,9 +897,9 @@ def whitespace_table(fs: FilterState, principal: Principal) -> dict:
         ],
          "rows": [{**r, "holdsLabel": ", ".join(r["holds"]),
                    "peerAttachRatePct": r["peerAttachRate"] * 100} for r in rows]},
-        says=["gp.all.by:account"],
+        says=[f"{_measure_key(fs)}.all.by:account"],
         subtitle="Upside, not risk — framed as the reference guide requires",
-        measure_label="ACV GP", key="table.compact",
+        measure_label=fs.measure_label, key="table.compact",
         empty_message=(
             "No cross-sell gap in scope — every account above "
             f"{money(ACC.MATERIAL_ACCOUNT_GP)} of gross profit already buys across "

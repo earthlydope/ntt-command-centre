@@ -678,6 +678,19 @@ def _via_plan(plan: dict, fs: FilterState, principal: Principal,
                      claim=result.claim, chart_why=result.chart_why)
 
 
+def _money_metric(fs: FilterState) -> str:
+    """
+    The plan metric for a plain money question, in the measure the page shows.
+
+    A question typed beside a revenue bar must answer in revenue: an answer
+    that said "$805K of gross profit" under a chart drawn in revenue read as
+    a contradiction. Questions that name gross profit in their own words —
+    "biggest by gross profit", the plan, the risk score — keep the literal
+    "gp" and do not pass through here.
+    """
+    return "gp" if fs.measure == "gp" else "rev"
+
+
 def _plan(metric: str, sub: str, breakdown: list[str] | None = None,
           grain: str | None = None, limit: int | None = None,
           filters: list[dict] | None = None, intent: str | None = None) -> dict:
@@ -706,7 +719,7 @@ def _derived_plan(computed: str, **fields) -> dict:
 
 def _most_open(fs: FilterState, principal: Principal, say: list[str], *, dim: str) -> dict:
     limit = 10 if dim in ("account", "rep") else 15
-    return _via_plan(_plan("gp", "open", [dim], limit=limit), fs, principal, say,
+    return _via_plan(_plan(_money_metric(fs), "open", [dim], limit=limit), fs, principal, say,
                      empty_what="open deals")
 
 
@@ -832,7 +845,7 @@ def _my_win_rate(fs: FilterState, principal: Principal, say: list[str]) -> dict:
 @register("Where is my pipeline concentrated by portfolio?",
           "Where is the pipeline concentrated by portfolio?")
 def _my_by_portfolio(fs: FilterState, principal: Principal, say: list[str]) -> dict:
-    return _via_plan(_plan("gp", "open", ["portfolio"]), fs, principal, say,
+    return _via_plan(_plan(_money_metric(fs), "open", ["portfolio"]), fs, principal, say,
                      empty_what="open deals")
 
 
@@ -938,7 +951,7 @@ def _do_first(fs: FilterState, principal: Principal, say: list[str]) -> dict:
 @register("Which reps in my pod hold the most open pipeline?",
           "Which reps hold the most open pipeline?")
 def _pod_open_by_rep(fs: FilterState, principal: Principal, say: list[str]) -> dict:
-    return _via_plan(_plan("gp", "open", ["rep"], limit=12), fs, principal, say,
+    return _via_plan(_plan(_money_metric(fs), "open", ["rep"], limit=12), fs, principal, say,
                      empty_what="open deals")
 
 
@@ -960,7 +973,7 @@ def _pod_win_rate(fs: FilterState, principal: Principal, say: list[str]) -> dict
           "Where is the pod s pipeline by line of business?",
           "Where is the pipeline by line of business?")
 def _pod_by_lob(fs: FilterState, principal: Principal, say: list[str]) -> dict:
-    return _via_plan(_plan("gp", "open", ["lob"]), fs, principal, say,
+    return _via_plan(_plan(_money_metric(fs), "open", ["lob"]), fs, principal, say,
                      empty_what="open deals")
 
 
@@ -1137,7 +1150,7 @@ def _won_by_month(fs: FilterState, principal: Principal, say: list[str]) -> dict
 @register("Where is open pipeline concentrated by industry?",
           "Where is the pipeline concentrated by industry?")
 def _open_by_industry(fs: FilterState, principal: Principal, say: list[str]) -> dict:
-    return _via_plan(_plan("gp", "open", ["industry"]), fs, principal, say,
+    return _via_plan(_plan(_money_metric(fs), "open", ["industry"]), fs, principal, say,
                      empty_what="open deals")
 
 
@@ -1400,14 +1413,14 @@ def _over_90(fs: FilterState, principal: Principal, say: list[str]) -> dict:
 
 @register("Which line of business is worst for overdue deals?")
 def _overdue_by_lob(fs: FilterState, principal: Principal, say: list[str]) -> dict:
-    return _via_plan(_plan("gp", "pastdue", ["lob"]), fs, principal, say,
+    return _via_plan(_plan(_money_metric(fs), "pastdue", ["lob"]), fs, principal, say,
                      empty_what="past-due deals")
 
 
 @register("Who owns the most overdue value?", "Who owns the most overdue deals?")
 def _overdue_owner(fs: FilterState, principal: Principal, say: list[str]) -> dict:
     dim = "account" if principal.key == "ae" else "rep"
-    return _via_plan(_plan("gp", "pastdue", [dim], limit=12), fs, principal, say,
+    return _via_plan(_plan(_money_metric(fs), "pastdue", [dim], limit=12), fs, principal, say,
                      empty_what="past-due deals")
 
 
@@ -1746,7 +1759,7 @@ def _reach_last(fs: FilterState, principal: Principal, say: list[str]) -> dict:
 
 @register("How much open value sits at each stage?", "How much is open at each stage?")
 def _open_by_stage(fs: FilterState, principal: Principal, say: list[str]) -> dict:
-    return _via_plan(_plan("gp", "open", ["stage"]), fs, principal, say,
+    return _via_plan(_plan(_money_metric(fs), "open", ["stage"]), fs, principal, say,
                      empty_what="open deals")
 
 
@@ -2338,12 +2351,13 @@ def _top_industries(fs: FilterState, principal: Principal, say: list[str]) -> di
 
 @register("Which industry brings the most?", "Which industry brings the most gross profit?")
 def _industry_most(fs: FilterState, principal: Principal, say: list[str]) -> dict:
-    return _via_plan(_plan("gp", "all", ["industry"]), fs, principal, say, empty_what="lines")
+    return _via_plan(_plan(_money_metric(fs), "all", ["industry"]), fs, principal, say, empty_what="lines")
 
 
 @register("Where does Networking business come from?", "Where does networking business come from?")
 def _networking_from(fs: FilterState, principal: Principal, say: list[str]) -> dict:
-    plan = _plan("gp", "all", ["industry"], filters=[{"dim": "lob", "op": "eq", "value": "Networking"}])
+    plan = _plan(_money_metric(fs), "all", ["industry"],
+                 filters=[{"dim": "lob", "op": "eq", "value": "Networking"}])
     return _via_plan(plan, fs, principal, say, empty_what="Networking lines",
                      headline=None)
 

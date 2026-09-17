@@ -18,6 +18,14 @@ measure it is the same arithmetic, not a second definition.
 Nothing here computes a number from scratch: every figure comes from
 `measures.measures()`, `predict`, `accounts`, `budget` or `movement_features`,
 which is what keeps the tiles and the charts below them in agreement.
+
+The Show: Profit / Revenue toggle is honoured here, not merely echoed. A tile
+that is a plain money aggregate — open, won, past due, stalled, at risk, a
+customer's or a line's worth — reads `fs.value_column` and names the measure
+in its sub-line. A tile measured against the plan (attainment, coverage, the
+quarter against its budget) stays gross profit whichever way the toggle sits,
+because the plan is set in GP, and its sub-line says "gross profit" so the
+reader knows why that one did not move.
 """
 
 from __future__ import annotations
@@ -70,7 +78,14 @@ def _ctx(fs: FilterState, principal: Principal) -> dict:
     mv = mv[mv["opportunity_code"].isin(codes)]
     opp = opportunities()
     opp = opp[opp["opportunity_code"].isin(codes)]
-    return {"frame": frame, "risk": risk, "mv": mv, "opp": opp}
+    # "At risk" is the money in deals scoring High or Critical. The BAND is a
+    # score on observable facts and does not move with the toggle; the money
+    # inside it does, so it is summed on the active measure here, once, for
+    # every persona's tile.
+    hot = risk["risk_band"].isin(("High", "Critical"))
+    at_risk = float(risk.loc[hot, fs.value_column].sum())
+    return {"frame": frame, "risk": risk, "mv": mv, "opp": opp,
+            "hot": hot, "atRisk": at_risk}
 
 
 def _tone_for(share: float, warn: float, danger: float) -> str:
@@ -85,18 +100,19 @@ def _tone_for(share: float, warn: float, danger: float) -> str:
 def _ae(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list[dict]:
     frame, risk, mv, opp = c["frame"], c["risk"], c["mv"], c["opp"]
     open_b, past, stalled = m["open"], m["pastDue"], m["stalled"]
-    at_risk = float(risk.loc[risk["risk_band"].isin(("High", "Critical")), "acv_gp"].sum())
+    at_risk, hot = c["atRisk"], c["hot"]
+    mk, word, col = fs.measure, fs.measure_word, fs.value_column
 
     if page == "my-deals":
         slipped = risk[risk["close_date_slips"] > 0]
         shrunk = risk[risk["value_drift"] < -0.30]
         worst = int(risk["risk_score"].max()) if len(risk) else 0
         return [
-            tile("past_due", "Past close date", past["gp"], money(past["gp"]),
-                 f"{past['opps']} deals the date has already gone by",
+            tile("past_due", "Past close date", past[mk], money(past[mk]),
+                 f"{past['opps']} deals the date has already gone by · {word}",
                  "danger" if m["pastDueShare"] > 50 else "warn", "up-bad", "clock"),
-            tile("stalled", "Stopped moving", stalled["gp"], money(stalled["gp"]),
-                 f"{stalled['opps']} with nothing logged in {STALL_DAYS}+ days",
+            tile("stalled", "Stopped moving", stalled[mk], money(stalled[mk]),
+                 f"{stalled['opps']} with nothing logged in {STALL_DAYS}+ days · {word}",
                  "danger" if m["stalledShare"] > 50 else "warn", "up-bad", "clock"),
             tile("slipped", "Date pushed back", len(slipped), count(len(slipped)),
                  f"{int(slipped['slip_days'].sum()):,} days later in total"
@@ -110,9 +126,9 @@ def _ae(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list[dict
                  "Highest risk score in your book",
                  "danger" if worst >= 70 else "warn" if worst >= 50 else "good",
                  "up-bad", "risk"),
-            tile("open", "Still open", open_b["gp"], money(open_b["gp"]),
-                 f"{open_b['opps']} deals", "accent", "up-good",
-                 "pipeline", trend(frame, "open_gp")),
+            tile("open", "Still open", open_b[mk], money(open_b[mk]),
+                 f"{open_b['opps']} deals · {word}", "accent", "up-good",
+                 "pipeline", trend(frame, "open_gp", col)),
         ]
 
     if page == "my-accounts":
@@ -124,12 +140,12 @@ def _ae(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list[dict
         # $1.39M when the rep in front of the screen owns a fraction of it —
         # a true number about somebody else's business.
         mine = frame.groupby(["account_code", "account_name"]).agg(
-            gp=("acv_gp", "sum"),
+            value=(col, "sum"),
             opportunities=("opportunity_code", "nunique"),
             lob_count=("lob", "nunique"),
         ).reset_index()
         one_lob = int((mine["lob_count"] == 1).sum())
-        top = mine.nlargest(1, "gp") if len(mine) else mine
+        top = mine.nlargest(1, "value") if len(mine) else mine
         return [
             tile("customers", "My customers", len(mine), count(len(mine)),
                  f"{int(mine['opportunities'].sum())} deals between them",
@@ -138,9 +154,9 @@ def _ae(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list[dict
                  "Customers taking only one of our four lines",
                  "warn" if one_lob else "good", "up-bad", "pipeline"),
             tile("biggest", "Biggest customer",
-                 float(top["gp"].iloc[0]) if len(top) else 0,
-                 money(float(top["gp"].iloc[0])) if len(top) else "—",
-                 f"{top['account_name'].iloc[0]} — your share"
+                 float(top["value"].iloc[0]) if len(top) else 0,
+                 money(float(top["value"].iloc[0])) if len(top) else "—",
+                 f"{top['account_name'].iloc[0]} — your {word} there"
                  if len(top) else "No customers in scope",
                  "accent", "neutral", "account"),
             tile("ideas", "Growth ideas", xs["recommendations"],
@@ -160,7 +176,7 @@ def _ae(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list[dict
     if page == "my-record":
         closed = opp[opp["is_closed"]]
         cycle = float(closed["cycle_days"].median()) if len(closed) else 0
-        avg = float(closed.loc[closed["is_won"], "acv_gp"].mean()) if closed["is_won"].any() else 0
+        avg = float(closed.loc[closed["is_won"], col].mean()) if closed["is_won"].any() else 0
         allreps = rep_behaviour()
         peer = float(allreps["win_rate"].median() * 100)
         lost_stage = "—"
@@ -177,14 +193,14 @@ def _ae(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list[dict
                  f"Team middle is {peer:.0f}%",
                  "good" if m["winRate"] >= peer else "warn", "up-good",
                  "target", trend(frame, "win_rate")),
-            tile("won", "Won this year", m["won"]["gp"], money(m["won"]["gp"]),
-                 f"{m['won']['opps']} deals", "good", "up-good",
-                 "won", trend(frame, "won_gp")),
+            tile("won", "Won this year", m["won"][mk], money(m["won"][mk]),
+                 f"{m['won']['opps']} deals · {word}", "good", "up-good",
+                 "won", trend(frame, "won_gp", col)),
             tile("closed", "Deals closed", m["closed"]["opps"], count(m["closed"]["opps"]),
                  f"{m['winRateBasis']['won']} won, {m['winRateBasis']['lost']} lost",
                  "neutral", "neutral", "metric"),
             tile("avg", "Average win", avg, money(avg),
-                 "Profit on a typical won deal", "neutral", "up-good", "metric"),
+                 f"{word.capitalize()} on a typical won deal", "neutral", "up-good", "metric"),
             tile("cycle", "Time to close", cycle, f"{cycle:.0f}d",
                  "From first logged to closed", "neutral", "up-bad", "clock"),
             tile("lost_at", "Usually lost at", 0, lost_stage,
@@ -199,16 +215,16 @@ def _ae(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list[dict
              f"Nothing logged in {STALL_DAYS}+ days",
              "danger" if needs > 5 else "warn" if needs else "good", "up-bad", "clock"),
         tile("at_risk", "At risk", at_risk, money(at_risk),
-             f"{int(risk['risk_band'].isin(('High', 'Critical')).sum())} deals scoring high",
-             "danger" if at_risk > open_b["gp"] * 0.4 else "warn", "up-bad", "risk"),
+             f"{int(hot.sum())} deals scoring high · {word}",
+             "danger" if at_risk > open_b[mk] * 0.4 else "warn", "up-bad", "risk"),
         tile("calls", "Calls to make", accounts_flagged, count(accounts_flagged),
              "Customers with something to chase — one call each",
              "warn" if accounts_flagged else "good", "up-bad", "account"),
-        tile("past_due", "Past close date", past["gp"], money(past["gp"]),
-             f"{past['opps']} deals", "warn", "up-bad", "calendar"),
-        tile("open", "Open pipeline", open_b["gp"], money(open_b["gp"]),
-             f"{open_b['opps']} deals · {pct(m['shareOfEntity'])} of the region",
-             "accent", "up-good", "pipeline", trend(frame, "open_gp")),
+        tile("past_due", "Past close date", past[mk], money(past[mk]),
+             f"{past['opps']} deals · {word}", "warn", "up-bad", "calendar"),
+        tile("open", "Open pipeline", open_b[mk], money(open_b[mk]),
+             f"{open_b['opps']} deals · {pct(m['shareOfEntity'])} of the region's {word}",
+             "accent", "up-good", "pipeline", trend(frame, "open_gp", col)),
         tile("quiet", "Typical silence", m["medianQuietDays"],
              f"{m['medianQuietDays']:.0f}d", "Across your open deals",
              "warn" if m["medianQuietDays"] > STALL_DAYS else "good", "up-bad", "clock"),
@@ -223,6 +239,7 @@ def _ae(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list[dict
 def _manager(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list[dict]:
     frame, risk, mv, opp = c["frame"], c["risk"], c["mv"], c["opp"]
     open_b, stalled = m["open"], m["stalled"]
+    mk, word, col = fs.measure, fs.measure_word, fs.value_column
     reps = rep_behaviour()
     members = p.predicate.get("owner", ())
     pod = reps[reps["rep"].isin(members)] if members else reps
@@ -235,7 +252,11 @@ def _manager(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list
             if len(credible) else credible
         spread = (float(credible["win_rate"].max() - credible["win_rate"].min()) * 100
                   if len(credible) else 0.0)
-        big = pod.nlargest(1, "open_gp") if len(pod) else pod
+        # Whose open book is biggest, on the active measure. `rep_behaviour`
+        # carries open GP only, so the figure is summed from this scope's own
+        # open lines — the same rows the pipeline tile and the charts read.
+        open_by_rep = (subset(frame, "open").groupby("owner")[col].sum()
+                       .reindex(pod["rep"]).fillna(0.0).sort_values(ascending=False))
         return [
             tile("off", "Reps off the pattern", off, count(off),
                  f"of {len(pod)} · more than 1.5 SD from the team",
@@ -251,8 +272,9 @@ def _manager(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list
                  f"{m['winRateBasis']['won'] + m['winRateBasis']['lost']}",
                  "neutral", "up-good", "target", trend(frame, "win_rate")),
             tile("biggest_book", "Biggest book", 0,
-                 str(big["rep"].iloc[0]) if len(big) else "—",
-                 f"{money(float(big['open_gp'].iloc[0]))} still open" if len(big) else "—",
+                 str(open_by_rep.index[0]) if len(open_by_rep) else "—",
+                 f"{money(float(open_by_rep.iloc[0]))} of {word} still open"
+                 if len(open_by_rep) else "—",
                  "accent", "neutral", "pipeline"),
             tile("reps", "Reps", len(pod), count(len(pod)),
                  f"{int(pod['deals'].sum())} deals between them",
@@ -304,7 +326,7 @@ def _manager(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list
                  "Down more than 30% since first logged",
                  "warn" if len(shrunk) else "good", "up-bad", "down"),
             tile("stalled", "Stopped moving", m["stalledShare"], pct(m["stalledShare"]),
-                 f"{stalled['opps']} deals silent {STALL_DAYS}+ days",
+                 f"{stalled['opps']} deals silent {STALL_DAYS}+ days · share of open {word}",
                  "danger" if m["stalledShare"] > 50 else "warn", "up-bad", "clock"),
             tile("team_win", "Team win rate", m["winRate"], pct(m["winRate"]),
                  "The one outcome that survives averaging",
@@ -325,7 +347,7 @@ def _manager(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list
         mine = prof[prof["account_code"].isin(set(frame["account_code"]))]
         return [
             tile("upside", "Missing a whole line", upside, money(upside),
-                 f"{len(ws)} customers do not buy one of our four lines",
+                 f"Peer gross profit on the line {len(ws)} customers do not buy",
                  "good", "up-good", "growth"),
             tile("best", "Best opening", 0,
                  str(best["recommendedLob"]) if best else "—",
@@ -346,7 +368,7 @@ def _manager(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list
 
     # pod-pulse — who needs me this week
     needs = int(len(risk[risk["quiet_days"] >= STALL_DAYS])) if len(risk) else 0
-    at_risk = float(risk.loc[risk["risk_band"].isin(("High", "Critical")), "acv_gp"].sum())
+    at_risk = c["atRisk"]
     return [
         tile("off", "Reps to coach", off, count(off),
              f"of {len(pod)} · off the team pattern",
@@ -355,12 +377,13 @@ def _manager(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list
              f"Nothing logged in {STALL_DAYS}+ days",
              "danger" if needs > 20 else "warn", "up-bad", "clock"),
         tile("at_risk", "At risk", at_risk, money(at_risk),
-             "In deals scoring high or critical", "danger", "up-bad", "risk"),
-        tile("open", "Team pipeline", open_b["gp"], money(open_b["gp"]),
-             f"{open_b['opps']} deals · {pct(m['shareOfEntity'])} of the region",
-             "accent", "up-good", "pipeline", trend(frame, "open_gp")),
+             f"{word.capitalize()} in deals scoring high or critical",
+             "danger", "up-bad", "risk"),
+        tile("open", "Team pipeline", open_b[mk], money(open_b[mk]),
+             f"{open_b['opps']} deals · {pct(m['shareOfEntity'])} of the region's {word}",
+             "accent", "up-good", "pipeline", trend(frame, "open_gp", col)),
         tile("stalled", "Stopped moving", m["stalledShare"], pct(m["stalledShare"]),
-             f"{stalled['opps']} of {open_b['opps']} open deals",
+             f"{stalled['opps']} of {open_b['opps']} open deals · share of open {word}",
              "danger" if m["stalledShare"] > 50 else "warn", "up-bad", "clock"),
         tile("team_win", "Team win rate", m["winRate"], pct(m["winRate"]),
              f"{m['winRateBasis']['won']} won of "
@@ -395,15 +418,24 @@ def _plan_span(fs: FilterState, p: Principal) -> str:
 def _exec(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list[dict]:
     frame, risk = c["frame"], c["risk"]
     open_b, stalled = m["open"], m["stalled"]
+    mk, word, col = fs.measure, fs.measure_word, fs.value_column
     t = B.totals(fs, p)
     conc = ACC.concentration(fs, p)
-    hot = risk["risk_band"].isin(("High", "Critical"))
-    at_risk = float(risk.loc[hot, "acv_gp"].sum())
+    hot, at_risk = c["hot"], c["atRisk"]
     # The sub-line describes the value above it. It used to quote the stalled
     # share of open value, a different measure from the High/Critical band the
     # figure sums, so the tile read as one number explained by another.
-    at_risk_sub = f"{int(hot.sum())} deals scoring high or critical"
+    at_risk_sub = f"{int(hot.sum())} deals scoring high or critical · {word}"
     plan_span = _plan_span(fs, p)
+    # "Won this year" is a plain aggregate and follows the toggle; what it is
+    # read AGAINST is the plan, which exists in gross profit only. On GP the
+    # sub-line quotes attainment; on revenue it says where the plan lives
+    # instead of quoting a ratio of revenue to a GP target.
+    won_v = m["won"][mk]
+    won_sub_plan = (f"{pct(t['attainmentPct'], 0)} of the {money(t['budgetGp'])} {plan_span}"
+                    if mk == "gp" else
+                    f"{m['won']['opps']} deals · revenue; the {money(t['budgetGp'])} "
+                    f"{plan_span} is set in gross profit")
 
     if page == "performance":
         qs = B.by_quarter(fs, p)
@@ -414,34 +446,37 @@ def _exec(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list[di
         best = max(past_months, key=lambda x: x["wonGp"]) if past_months else None
         beat = sum(1 for x in past_months if x["attainmentPct"] >= 100)
         return [
-            tile("won", "Won this year", t["wonGp"], money(t["wonGp"]),
-                 f"Against a {money(t['budgetGp'])} {plan_span}", "good", "up-good",
-                 "won", trend(frame, "won_gp")),
+            tile("won", "Won this year", won_v, money(won_v),
+                 f"Against a {money(t['budgetGp'])} {plan_span}" if mk == "gp"
+                 else won_sub_plan, "good", "up-good",
+                 "won", trend(frame, "won_gp", col)),
             tile("attain", "Of the plan", t["attainmentPct"], pct(t["attainmentPct"], 0),
-                 "Delivered so far this year",
+                 "Gross profit delivered so far this year",
                  "good" if t["attainmentPct"] >= 100 else "warn", "up-good", "target"),
             tile("cover", "Pipeline cover", t["coverage"] or 0,
                  mult(t["coverage"]) if t["coverage"] else "plan met",
-                 f"Open pipeline against what is left from {CUR_QUARTER}",
+                 f"Open gross profit against what is left from {CUR_QUARTER}",
                  "good" if (t["coverage"] or 9) >= 1.5 else "danger", "up-good", "pipeline"),
             tile("this_q", "This quarter", cur["wonGp"] if cur else 0,
                  money(cur["wonGp"]) if cur else "—",
-                 f"{pct(cur['attainmentPct'], 0)} of its plan" if cur else "—",
+                 f"{pct(cur['attainmentPct'], 0)} of its gross profit plan" if cur else "—",
                  "good" if cur and cur["attainmentPct"] >= 100 else "warn",
                  "up-good", "calendar"),
             tile("next_q", "Next quarter", fwd["remainingGp"] if fwd else 0,
                  money(fwd["remainingGp"]) if fwd else "—",
-                 f"{money(fwd['openGp'])} of pipeline behind it" if fwd else "Year is done",
+                 f"Left of its gross profit plan · {money(fwd['openGp'])} of pipeline behind it"
+                 if fwd else "Year is done",
                  "danger" if fwd and (fwd["coverage"] or 0) < 1 else "warn",
                  "up-bad", "calendar"),
             tile("best", "Best month", best["wonGp"] if best else 0,
                  money(best["wonGp"]) if best else "—",
-                 best["month"] if best else "—", "accent", "neutral", "metric"),
+                 f"{best['month']} · gross profit, against its monthly plan"
+                 if best else "—", "accent", "neutral", "metric"),
         ]
 
     if page == "structure":
         lv = ACC.lob_count_value()
-        by_lob = frame.groupby("lob")["acv_gp"].sum().sort_values(ascending=False)
+        by_lob = frame.groupby("lob")[col].sum().sort_values(ascending=False)
         return [
             tile("revenue", "Revenue", m["total"]["revenue"], money(m["total"]["revenue"]),
                  f"{m['total']['lines']:,} deal lines", "accent", "up-good", "metric"),
@@ -455,7 +490,7 @@ def _exec(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list[di
                  conc["accounts"][0]["account_name"] if conc["accounts"] else "—",
                  "danger" if conc["topAccountShare"] >= 12 else "warn", "up-bad", "account"),
             tile("top_five", "Top five together", conc["top5AccountShare"],
-                 pct(conc["top5AccountShare"]), "Of all profit",
+                 pct(conc["top5AccountShare"]), "Of all gross profit",
                  "danger" if conc["top5AccountShare"] >= 40 else "warn", "up-bad", "account"),
             tile("top_industry", "Biggest industry", conc["topIndustryShare"],
                  pct(conc["topIndustryShare"]),
@@ -463,7 +498,7 @@ def _exec(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list[di
                  "warn", "up-bad", "pipeline"),
             tile("top_lob", "Biggest line", float(by_lob.iloc[0]) if len(by_lob) else 0,
                  money(float(by_lob.iloc[0])) if len(by_lob) else "—",
-                 str(by_lob.index[0]) if len(by_lob) else "—",
+                 f"{by_lob.index[0]} · {word}" if len(by_lob) else "—",
                  "accent", "neutral", "pipeline"),
         ]
 
@@ -480,7 +515,7 @@ def _exec(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list[di
                  count(s["byPriority"].get("Critical", 0)),
                  "Worth looking at first", "danger", "up-bad", "risk"),
             tile("stake", "Money involved", stake, money(stake),
-                 "Profit attached to these findings", "danger", "up-bad", "metric"),
+                 "Gross profit attached to these findings", "danger", "up-bad", "metric"),
             tile("at_risk", "Pipeline at risk", at_risk, money(at_risk),
                  at_risk_sub, "danger", "up-bad", "clock"),
             tile("upside", "Good news", s["upside"], count(s["upside"]),
@@ -500,9 +535,13 @@ def _exec(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list[di
             tile("plays", "Plays worth running", len(th), count(len(th)),
                  "Same offering missing at two or more customers",
                  "good", "up-good", "target"),
+            # The value is the number of customers the play reaches; the
+            # offering is named in the sub-line. The tile used to put the
+            # offering's name where the figure goes, and "Networking /
+            # Product" wrapped as a headline.
             tile("biggest", "Biggest play", big["accounts"] if big else 0,
-                 big["offering"] if big else "—",
-                 f"{big['accounts']} customers, {big['ownerCount']} owners"
+                 count(big["accounts"]) if big else "—",
+                 f"{big['offering']} · {big['ownerCount']} owners"
                  if big else "Nothing repeats across customers",
                  "accent", "neutral", "growth"),
             tile("ideas", "Growth ideas", xs["recommendations"],
@@ -512,8 +551,8 @@ def _exec(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list[di
                  f"{xs['veryHigh']} found by more than one method",
                  "good", "up-good", "metric"),
             tile("worth", "Peer value", xs["estimatedGp"], money(xs["estimatedGp"]),
-                 "What peers earn on the same offerings — an order of magnitude, "
-                 "not a forecast", "neutral", "neutral", "growth"),
+                 "Gross profit peers earn on the same offerings — an order of "
+                 "magnitude, not a forecast", "neutral", "neutral", "growth"),
             tile("owners", "People to brief", owners, count(owners),
                  "Account owners who would run these plays",
                  "accent", "neutral", "people"),
@@ -539,7 +578,7 @@ def _exec(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list[di
                  "danger" if grid["holes"] else "good", "up-bad", "pipeline"),
             tile("cover", "Pipeline cover", t["coverage"] or 0,
                  mult(t["coverage"]) if t["coverage"] else "plan met",
-                 "Against what is left of the plan",
+                 "Open gross profit against what is left of the plan",
                  "good" if (t["coverage"] or 9) >= 1.5 else "danger", "up-good", "target"),
             tile("upside", "Chances to sell", upside, count(upside),
                  "Decisions that are opportunities", "good", "up-good", "growth"),
@@ -547,16 +586,15 @@ def _exec(page: str, fs: FilterState, p: Principal, m: dict, c: dict) -> list[di
 
     # tldr — the read
     return [
-        tile("won", "Won this year", t["wonGp"], money(t["wonGp"]),
-             f"{pct(t['attainmentPct'], 0)} of the {money(t['budgetGp'])} {plan_span}",
+        tile("won", "Won this year", won_v, money(won_v), won_sub_plan,
              "good" if t["attainmentPct"] >= 100 else "warn", "up-good",
-             "won", trend(frame, "won_gp")),
-        tile("open", "Open pipeline", open_b["gp"], money(open_b["gp"]),
-             f"{open_b['opps']} deals still in play", "accent", "up-good",
-             "pipeline", trend(frame, "open_gp")),
+             "won", trend(frame, "won_gp", col)),
+        tile("open", "Open pipeline", open_b[mk], money(open_b[mk]),
+             f"{open_b['opps']} deals still in play · {word}", "accent", "up-good",
+             "pipeline", trend(frame, "open_gp", col)),
         tile("cover", "Pipeline cover", t["coverage"] or 0,
              mult(t["coverage"]) if t["coverage"] else "plan met",
-             "Against what is left of the plan",
+             "Open gross profit against what is left of the plan",
              "good" if (t["coverage"] or 9) >= 1.5 else "danger", "up-good", "target"),
         tile("at_risk", "At risk", at_risk, money(at_risk),
              at_risk_sub, "danger", "up-bad", "risk"),

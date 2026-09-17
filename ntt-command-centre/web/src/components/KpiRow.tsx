@@ -169,7 +169,14 @@ function TileBody({ kpi }: { kpi: Kpi }) {
           <Solid name={solidFor(kpi.icon)} size={SIZE.tile} />
         </span>
       </span>
-      <span className="kpi-row__value">{kpi.formatted}</span>
+      {/* A tile whose value is a name rather than a figure ("Networking /
+          Product") cannot wear the number size — it wraps into a headline
+          and pushes the sub line off the card. It takes the heading size. */}
+      <span
+        className={`kpi-row__value${/[A-Za-z]{3,}/.test(kpi.formatted) ? " kpi-row__value--text" : ""}`}
+      >
+        {kpi.formatted}
+      </span>
       <Spark points={kpi.spark ?? []} tone={kpi.tone} />
       <span className="kpi-row__sub">{kpi.sub}</span>
       <DirectionFlag direction={kpi.direction} />

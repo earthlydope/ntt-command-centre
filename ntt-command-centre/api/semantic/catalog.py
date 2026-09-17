@@ -298,7 +298,11 @@ def rules() -> list[dict]:
                                        "account are constant within an opportunity and count "
                                        "opportunities. LOB and portfolio vary within one and "
                                        "count lines."},
-        {"rule": "default_measure", "statement": "GP is the default. Revenue is the toggle."},
+        {"rule": "default_measure", "statement": "GP is the default. Revenue is the toggle: "
+                                                 "plain money aggregates (open, won, at risk, "
+                                                 "by account, by industry) follow it; anything "
+                                                 "against the plan, the margin and the risk "
+                                                 "score stay GP because the plan is set in GP."},
     ]
 
 

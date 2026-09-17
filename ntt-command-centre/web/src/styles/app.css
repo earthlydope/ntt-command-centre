@@ -563,6 +563,15 @@ button.kpi-row__tile:hover {
   letter-spacing: -0.02em;
 }
 
+/* A named value ("Networking / Product") reads at the heading size, on one
+   or two lines, never at the number size. */
+.kpi-row__value--text {
+  font: var(--t-h2);
+  letter-spacing: 0;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
 .kpi-row__tile--accent .kpi-row__value { color: var(--accent); }
 .kpi-row__tile--good .kpi-row__value { color: var(--good); }
 .kpi-row__tile--warn .kpi-row__value { color: var(--warn); }

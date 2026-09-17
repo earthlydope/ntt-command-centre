@@ -46,6 +46,17 @@ DEFAULT_MEASURE: Measure = "gp"
 
 VALUE_COLUMN: dict[str, str] = {"gp": "acv_gp", "revenue": "acv_revenue"}
 MEASURE_LABEL: dict[str, str] = {"gp": "ACV GP", "revenue": "ACV Revenue"}
+#: The measure as a word in a sentence — "$805K of gross profit", "of revenue".
+MEASURE_WORD: dict[str, str] = {"gp": "gross profit", "revenue": "revenue"}
+
+# The Show: Profit / Revenue toggle used to change nothing but the label,
+# because every tile and most charts read `acv_gp` by name. The rule now is
+# in one place: a plain money aggregate over opportunity lines follows
+# `fs.value_column` and describes itself with `fs.measure_label` or
+# `fs.measure_word`. Anything measured against the plan stays gross profit
+# whichever way the toggle sits — the budget is set in GP and there is no
+# revenue plan to read it against — and says "gross profit" on its face so
+# the reader knows why it did not move.
 
 #: The client's stated services margin target ("services GP should be around 30%").
 SERVICES_GM_TARGET = 30.0
@@ -153,6 +164,10 @@ class FilterState:
     @property
     def measure_label(self) -> str:
         return MEASURE_LABEL[self.measure]
+
+    @property
+    def measure_word(self) -> str:
+        return MEASURE_WORD[self.measure]
 
     def active(self) -> list[dict]:
         return [
@@ -283,6 +298,8 @@ def count_on(df: pd.DataFrame, dim: str) -> int:
 
 
 def money_block(df: pd.DataFrame) -> dict:
+    """Both measures at once. The keys are the measure keys, so a caller
+    wanting the active one reads `block[fs.measure]`."""
     return {
         "revenue": float(df["acv_revenue"].sum()),
         "gp": float(df["acv_gp"].sum()),
@@ -334,9 +351,13 @@ def gm_from(g: pd.DataFrame) -> float:
     return 100.0 * float(g["gp"].sum()) / rev if rev else 0.0
 
 
-def trend(df: pd.DataFrame, what: str) -> list[float]:
+def trend(df: pd.DataFrame, what: str, col: str = "acv_gp") -> list[float]:
     """
     A genuine monthly series for a KPI, or an empty list when there isn't one.
+
+    `col` is the money column the `open_gp` and `won_gp` series sum — the
+    tile passes `fs.value_column`, so a sparkline under a revenue figure is a
+    revenue series rather than the gross-profit line it used to be.
 
     Sparklines are only drawn where a real history exists. Several of these
     measures are SNAPSHOTS — "open pipeline" is a fact about today — so the
@@ -366,7 +387,7 @@ def trend(df: pd.DataFrame, what: str) -> list[float]:
             edge = m.end_time
             live = (create <= edge) & (close > edge)
             out.append(
-                float(df.loc[live, "acv_gp"].sum()) if what == "open_gp"
+                float(df.loc[live, col].sum()) if what == "open_gp"
                 else float(df.loc[live, "opportunity_code"].nunique())
             )
         return out
@@ -395,7 +416,7 @@ def trend(df: pd.DataFrame, what: str) -> list[float]:
                     out.append(0.0)
                 continue
             if what == "won_gp":
-                out.append(float(sub.loc[sub["is_won"], "acv_gp"].sum()))
+                out.append(float(sub.loc[sub["is_won"], col].sum()))
             elif what == "won_count":
                 out.append(float(sub.loc[sub["is_won"], "opportunity_code"].nunique()))
             elif what == "gm":

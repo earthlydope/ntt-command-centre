@@ -342,8 +342,11 @@ def ask(question: str, fs: M.FilterState, principal: Principal,
     if not q:
         return {"error": "empty question"}
 
+    # The measure is part of the question: "open pipeline by rep" is a
+    # different answer in revenue than in profit, so it is part of the key.
     key = _cache_key("ask", q.lower(), principal.key, principal.identity,
-                     json.dumps(fs.values, sort_keys=True), chart_id or "", page or "")
+                     json.dumps(fs.values, sort_keys=True), fs.measure,
+                     chart_id or "", page or "")
     if (hit := _cached(key)):
         return hit
 
