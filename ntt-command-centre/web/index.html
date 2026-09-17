@@ -1,0 +1,33 @@
+<!doctype html>
+<!-- data-theme is written by the inline bootstrap in src/theme/bootstrap.ts,
+     which runs before React mounts so the first paint is never the wrong theme.
+     Dark is the default (CONTRACT §7). -->
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Deal Intelligence — NTT DATA</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/ntt-mark-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/ntt-mark-180.png" />
+    <meta name="description" content="NTT DATA Deal Intelligence — North America pipeline, risk and anomaly intelligence." />
+    <script>
+      // Pre-paint theme resolution. Duplicated deliberately from theme/store.ts:
+      // it must run as a blocking script in <head>, before the bundle loads, or
+      // the page flashes dark-then-light on a light-theme reload.
+      (function () {
+        try {
+          var q = new URLSearchParams(location.search).get("theme");
+          var t = q === "light" || q === "dark" ? q : localStorage.getItem("acc.theme");
+          if (t !== "light" && t !== "dark") t = "dark";
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "dark");
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

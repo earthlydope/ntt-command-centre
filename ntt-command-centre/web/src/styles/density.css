@@ -1,0 +1,483 @@
+/* ==========================================================================
+   density.css — the legibility pass. Imported AFTER styles/app.css, so every
+   rule here is the last word on the property it sets.
+
+   IT FIXES TWO THINGS THE CUSTOMER REPORTED.
+
+   1. "Increase the font size, many buttons, icons are too small at 100% screen
+      size." The type scale was drawn for a 13.5px body on a large display. At
+      100% zoom on a laptop that reads as a console, not a product. Everything
+      steps up about 11%, which is one perceptible size — enough to fix the
+      complaint, small enough that no line that fit before stops fitting. The
+      single lever is the type tokens on :root: they cascade everywhere at
+      once. The handful of rules in app.css that wrote a raw px size bypassed
+      those tokens, so each one is re-stated below through a size token rather
+      than left behind at 10px or 11px.
+
+      Every interactive control also gets a floor under its hit target:
+      36px on a mouse, 44px anywhere the pointer is a finger, which is the
+      accessibility floor. An icon-only button's glyph grows with the box —
+      a 44px square around a 13px glyph is a big button that still looks tiny.
+
+   2. "There are multiple gaps as empty spaces between charts." The layout
+      pass (lenses/chartLayout.ts) now offers two cards that share a row ONE
+      height and lets each module answer with what it will draw; a pair whose
+      answers differ by more than a footer's worth is split into two full
+      rows, and a pair that meets is stretched to the same card height with
+      the few pixels of residue sitting between chart and footer. A card with
+      no partner takes the whole row. So the grid stretches rows again — that
+      is what makes a pair's cards the same height — and the chart region is
+      the chart's own height plus that residue, never a 200px floor and never
+      a strip of nothing under a chart that has finished drawing.
+
+   RULES THIS FILE KEEPS. Not one colour literal — nothing here sets a colour
+   at all. The only px values in the file are inside the :root token block at
+   the top, which is the point of a token block; every rule below reads them
+   back through var(). Motion is on the --dur tokens only, and the
+   reduced-motion contract is re-asserted at the foot of the file so it cannot
+   be lost to load order.
+   ========================================================================== */
+
+/* ----------------------------------------------------------- the type scale
+
+   old -> new, and why:
+     --t-display  32   -> 36     the page question, still the loudest thing
+     --t-h1       22   -> 25     the answer headline in the Ask panel
+     --t-h2       17   -> 19     the AI headline, section and panel titles
+     --t-h3       14   -> 16     chart-card titles, sub-heads
+     --t-body     13.5 -> 15     the default reading size; the main complaint
+     --t-small    12.5 -> 13.5   captions, secondary lines
+     --t-micro    11   -> 12.5   the smallest text allowed on screen
+     --t-label    12   -> 13     filter labels, column heads, KPI labels
+     --t-kpi      30   -> 34     the headline numbers
+     tables       12.5 -> 14     every cell in a data table
+     controls     12.5 -> 14     the text inside a select or a segment button
+     select       32   -> 38     the height of a filter select
+     "About this chart"  11.5 -> 13
+
+   Line heights stay where they were or loosen slightly: a bigger face on a
+   tight leading is harder to read, not easier. Weights and tracking are
+   unchanged — this is a size pass, not a restyle. */
+:root {
+  --t-display: 680 36px/1.12 var(--font);
+  --t-h1: 660 25px/1.25 var(--font);
+  --t-h2: 620 19px/1.32 var(--font);
+  --t-h3: 600 16px/1.38 var(--font);
+  --t-body: 400 15px/1.6 var(--font);
+  --t-body-strong: 590 15px/1.6 var(--font);
+  --t-small: 400 13.5px/1.55 var(--font);
+  --t-micro: 560 12.5px/1.45 var(--font);
+  --t-kpi: 640 34px/1.05 var(--font-num);
+  --t-label: 520 13px/1.35 var(--font);
+
+  /* Size-only companions to the shorthand tokens above. A rule that needs to
+     change ONLY the size — because the weight and family are already right —
+     cannot use a `font:` shorthand without resetting both, so it reads one of
+     these instead. Same scale, same steps, no second source of truth. */
+  --fs-micro: 12.5px;
+  --fs-small: 13.5px;
+  --fs-body: 15px;
+  --fs-h3: 16px;
+  /* A data table's cells, and the text inside a control (a select, a segment
+     button, a chip): both are read at a glance and both were the first
+     things reported as too small. */
+  --fs-table: 14px;
+  --fs-control: 14px;
+  /* The provenance line under a chart: small print, but print. */
+  --fs-meta: 13px;
+
+  /* Icon glyphs. These are characters, not images, so they inherit the text
+     size unless told otherwise — which is how a 44px button ended up with a
+     13px glyph in it. --fs-icon is for a control whose whole content is the
+     glyph; --fs-icon-sm for a glyph sharing a small tile with something else. */
+  --fs-icon: 19px;
+  --fs-icon-sm: 15px;
+
+  /* The hit-target floor. 36px is the desktop minimum; the coarse-pointer
+     block below raises it to the 44px touch floor. Every control in the app
+     is measured against this one number. */
+  --tap: 36px;
+  /* A filter select is the control used most and is read, not just hit, so
+     it stands a little taller than the floor. */
+  --control-h: 38px;
+
+  /* The header's height: the tallest control in it plus its breathing room.
+     The sticky rail hangs from the header, so its top and its viewport share
+     this one number rather than each guessing it. */
+  --hdr-h: calc(var(--tap) + var(--s-5));
+
+  /* The small squares that are not controls and so are not held to the floor:
+     the avatar and the KPI tile's glyph (--tile), and the count badge on the
+     bell (--tile-sm). Both were sized for the old type scale. */
+  --tile: 30px;
+  --tile-sm: 19px;
+
+  /* A filter select has to hold a longer word now that the word is bigger. */
+  --select-max: 220px;
+
+  /* The lens column beside each AI sentence: wide enough for "WHERE IT
+     STANDS" in micro caps, so every sentence starts on the same line. In px,
+     not em: the label and the explanation under it are set at different
+     sizes and both have to measure the same column. */
+  --ai-lens-w: 130px;
+}
+
+/* A finger is not a mouse pointer: 44px, the accessibility floor, wherever the
+   primary pointer is coarse or the screen is phone-sized. */
+@media (pointer: coarse), (max-width: 720px) {
+  :root {
+    --tap: 44px;
+    --control-h: 44px;
+  }
+}
+
+/* A phone is 375px wide and the two loudest sizes are the two that overflow it
+   first. They step back down — still larger than they were before this file. */
+@media (max-width: 420px) {
+  :root {
+    --t-display: 680 28px/1.15 var(--font);
+    --t-kpi: 640 27px/1.05 var(--font-num);
+  }
+}
+
+/* ------------------------------------------------------- the small print
+   Every rule in app.css that wrote its own px size, re-stated through the
+   scale above so it moves with everything else instead of staying behind. */
+
+.side__question,
+.who-role,
+.who-caret,
+.ai-sentence__claim,
+.ask-compose__hint,
+.dd__event-meta,
+.pv-filters__dim,
+.pv-thin {
+  font-size: var(--fs-micro);
+}
+
+.fbar__label,
+.ai-panel__foot,
+.ai-panel__prov,
+.dd__code,
+.ask-plan,
+.dd__event-field {
+  font-size: var(--fs-small);
+}
+
+.cmeta__toggle,
+.cmeta__body {
+  font-size: var(--fs-meta);
+}
+
+.ask-sentence__text,
+.pv-model__honest,
+.pv-model__why {
+  font-size: var(--fs-body);
+}
+
+/* The action headline and the answer headline pinned themselves to 14 or
+   15px on top of a token. They follow the token now. */
+.ask-answer__headline {
+  font-size: var(--fs-h3);
+}
+
+/* -------------------------------------------------------------- the shell */
+
+/* The header stops being a fixed 58px strip: with a 44px control inside it on
+   a touch screen, a fixed height is a clipped control. It is exactly --hdr-h
+   tall, which is the 58px it has always been on a mouse and 66px where the
+   control is 44px for a finger; the rail reads the same number. */
+.hdr {
+  height: auto;
+  min-height: var(--hdr-h);
+  padding-block: var(--s-2);
+}
+
+/* One quiet icon button, now big enough to hit and big enough to read. */
+.ghost {
+  width: var(--tap);
+  height: var(--tap);
+  font-size: var(--fs-icon);
+  line-height: 1;
+}
+
+.seg {
+  padding: var(--s-1);
+}
+
+.segbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(var(--control-h) - var(--s-2));
+  padding: var(--s-1) var(--s-3);
+  font-size: var(--fs-control);
+}
+
+.who {
+  min-height: var(--tap);
+  padding: var(--s-1) var(--s-3) var(--s-1) var(--s-1);
+}
+
+.who-avatar {
+  width: var(--tile);
+  height: var(--tile);
+  font: 600 var(--fs-micro)/1 var(--font);
+}
+
+/* ------------------------------------------------------------ sidebar nav */
+
+.side__item {
+  grid-template-columns: var(--s-5) 1fr;
+  min-height: var(--tap);
+  align-items: center;
+  padding: var(--s-2) var(--s-3);
+}
+
+.side__glyph {
+  padding-top: 0;
+  font-size: var(--fs-icon-sm);
+  line-height: 1;
+}
+
+/* ---------------------------------------------------------------- filters */
+
+.fbar__select {
+  min-height: var(--control-h);
+  max-width: var(--select-max);
+  padding: var(--s-2) var(--s-3);
+  font-size: var(--fs-control);
+}
+
+.fbar__clear,
+.pv-filters__clear {
+  min-height: var(--tap);
+  padding: var(--s-2) var(--s-4);
+  font-size: var(--fs-control);
+}
+
+.pv-filters__chip {
+  min-height: calc(var(--tap) - var(--s-2));
+  padding: var(--s-1) var(--s-3);
+}
+
+/* ------------------------------------------------------------------- KPI */
+
+.kpi-row__icon {
+  width: var(--tile);
+  height: var(--tile);
+  font-size: var(--fs-icon-sm);
+}
+
+/* --------------------------------------------------------------- buttons */
+
+/* Real buttons — retry, "open the deal", a suggestion chip — are the most
+   clicked things on the page and were the smallest. */
+.pv-error__retry,
+.ask-error__retry,
+.kpi-row__retry,
+.ai-panel__retry,
+.dd__retry,
+.pv-linkbtn,
+.ask-suggest__chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap);
+  padding: var(--s-2) var(--s-4);
+}
+
+/* ---------------------------------------------------------- the ask panel */
+
+/* The close button grew, so the header reserves a lane for it — a title that
+   runs underneath a control is a title you cannot read. */
+.ask-panel__header,
+.dd__head {
+  padding-right: calc(var(--tap) + var(--s-5));
+}
+
+.ask-panel__close,
+.dd__close {
+  width: var(--tap);
+  height: var(--tap);
+  font-size: var(--fs-icon);
+  line-height: 1;
+}
+
+.ask-compose__input {
+  min-height: calc(var(--tap) + var(--s-2));
+}
+
+.ask-compose__send {
+  min-height: var(--tap);
+  padding: var(--s-2) var(--s-4);
+}
+
+/* ----------------------------------------------------------------- tables */
+
+.pv-table,
+.dd__bench-table {
+  font-size: var(--fs-table);
+}
+
+/* A sortable column head is a button; it needs the same floor as any other.
+   The cell's own vertical padding comes down to pay for it, so a header row
+   with larger text does not also become a taller row. */
+.pv-table th,
+.dd__bench-table th {
+  padding: var(--s-2) var(--s-3);
+}
+
+.pv-sortbtn {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+}
+
+/* A disclosure triangle is a control too — the provenance line under a chart
+   and the filter disclosures are all clicked with a pointer. */
+.cmeta__toggle,
+.ai-panel__filter-toggle,
+.ask-disclosure__summary,
+.pv-scope__summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap);
+}
+
+/* --------------------------------------------------------------- AI panel */
+
+/* On a phone the lens column would take a third of the line, so the label
+   sits above its sentence instead. */
+@media (max-width: 720px) {
+  .ai-sentence__row {
+    flex-direction: column;
+    gap: var(--s-1);
+  }
+  .ai-sentence__lens {
+    width: auto;
+  }
+  .ai-sentence__tip {
+    margin-left: 0;
+  }
+}
+
+/* ====================================================================== 2.
+   THE GAPS BETWEEN THE CHARTS
+
+   Three things used to reserve space nobody was drawing in: the grid stretched
+   every cell to the tallest card in its row whatever the modules had drawn;
+   `.chartwrap` grew to fill whatever the card was given; and it held a 200px
+   floor whether or not the chart needed it.
+
+   The layout pass now settles the heights BEFORE anything is drawn (see the
+   header comment), so the grid may stretch again: a pair's two cards are the
+   same height by construction, and the residue — under a footer's worth — is
+   absorbed between the chart and the footer, where it reads as breathing
+   room. Rows pack densely so a full-width card never strands a hole beside
+   itself either. */
+
+.pv-charts {
+  align-items: stretch;
+  grid-auto-flow: dense;
+}
+
+/* The cell is a one-item grid so the card fills it top to bottom; a flex
+   column inside a stretched grid cell would otherwise sit at its own height. */
+.pv-charts__cell {
+  display: grid;
+  min-width: 0;
+}
+
+.card {
+  height: auto;
+  padding-bottom: var(--s-4);
+}
+
+/* The chart region is the height of the chart the module drew plus whatever
+   the row asks the card to carry, and no floor. Width still comes from the
+   wrapper, which is what the ResizeObserver measures. */
+.chartwrap {
+  flex: 1 0 auto;
+  min-height: 0;
+}
+
+.card-empty {
+  flex: 1 0 auto;
+}
+
+/* Whatever ends up last in a card — the chart, a footnote, the provenance
+   disclosure — the card's own bottom padding is the only space below it. */
+.card > :last-child {
+  margin-bottom: 0;
+}
+
+.card .chartwrap:last-child {
+  padding-bottom: 0;
+}
+
+/* --------------------------------------------------------- one rhythm
+
+   Every block of a page — the question, the KPI row, the brief, the action
+   rail, the active filters, the chart grid, the page's own block — sits one
+   --s-5 under the block above it. Each block used to bring its own top
+   margin (16, 22, 30) and the page read as a stack of unrelated panels. The
+   rule skips the screen-reader line, which is out of flow, so the loading
+   skeleton and the loaded page start at the same pixel. */
+.pv > :not(.pv-sr) ~ :not(.pv-sr) {
+  margin-top: var(--s-5);
+}
+
+.pv-head {
+  margin-bottom: 0;
+}
+
+/* Blocks that carry their own top margin inside a wrapper would otherwise
+   double it. */
+.kpi-row-region .kpi-row,
+.kpi-row-region .kpi-row__error,
+.kpi-row-region .kpi-row__empty {
+  margin-top: 0;
+}
+
+/* ------------------------------------------------------------- 375px guard
+
+   Larger type costs horizontal room, and the header is the one row that
+   cannot wrap. The product name is the only thing in it that is already said
+   elsewhere — the logo is right beside it — so it is what leaves. */
+@media (max-width: 560px) {
+  .hdr-name {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  /* One column, so a card has no neighbour to be stretched against; it only
+     needs to not overflow. */
+  .card {
+    padding-left: var(--s-4);
+    padding-right: var(--s-4);
+  }
+  .ask-panel__header,
+  .dd__head {
+    padding-right: calc(var(--tap) + var(--s-4));
+  }
+}
+
+/* ---------------------------------------------------------- reduced motion
+
+   Nothing in this file animates, and nothing here redefines --dur, --dur-fast
+   or --dur-slow, so the neutralisation in tokens.css still applies. It is
+   re-asserted anyway: this stylesheet loads early among the component sheets,
+   and a contract about vestibular safety should not depend on anyone
+   remembering that. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

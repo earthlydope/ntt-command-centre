@@ -1,0 +1,296 @@
+/* reps.css — the "How each rep compares with the team" block (PageView.tsx RepsBlock).
+   Loaded after app.css and density.css.
+
+   No colour literals: every colour resolves through a token in theme/tokens.css,
+   so both themes come for free. The persona accent is var(--persona), which the
+   shell sets from data-persona on <html>. */
+
+/* ------------------------------------------------------------ how to read
+   Said once, above the cards, in the reading colour rather than the muted one:
+   it is the sentence that makes every card below it make sense. */
+.pv-reps__how {
+  margin: 0 0 var(--s-4);
+  color: var(--text-2);
+  font: var(--t-small);
+}
+
+/* ------------------------------------------------------------------ cards
+   Two columns on a desktop, one under 900px. minmax(0, 1fr) so a long chip
+   cannot push a column wider than its share and make the page scroll. */
+.pv-reps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (max-width: 900px) {
+  .pv-reps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The left bar is the only thing a scanning eye needs: persona accent for a
+   rep who is off the pattern, a quiet grey for one who is on it, and almost
+   nothing for one there is not enough evidence to judge. */
+.pv-rep {
+  display: grid;
+  gap: var(--s-2);
+  min-width: 0;
+  padding: var(--s-4);
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--persona);
+  border-radius: var(--r);
+}
+
+.pv-rep--on {
+  border-left-color: rgba(var(--muted-rgb), 0.45);
+}
+
+.pv-rep--thin {
+  border-left-color: var(--line);
+  color: var(--muted);
+}
+
+.pv-rep__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-1) var(--s-3);
+}
+
+.pv-rep__name {
+  margin: 0;
+  font: var(--t-body-strong);
+  color: var(--text);
+}
+
+.pv-rep--thin .pv-rep__name {
+  color: var(--text-2);
+}
+
+.pv-rep__deals {
+  color: var(--muted);
+  font: var(--t-small);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------- verdict
+   One line, one colour. The dot carries the tone so the sentence itself can
+   stay in a readable text colour for the calm states; only the two states that
+   ask for a conversation colour the words. */
+.pv-rep__verdict {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: 0;
+  font: var(--t-body-strong);
+  color: var(--text-2);
+}
+
+.pv-rep__verdict::before {
+  content: "";
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.pv-rep__verdict--danger {
+  color: var(--danger);
+}
+
+.pv-rep__verdict--warn {
+  color: var(--warn);
+}
+
+.pv-rep__verdict--good {
+  color: var(--text-2);
+}
+
+.pv-rep__verdict--good::before {
+  background: var(--good);
+}
+
+.pv-rep__verdict--neutral {
+  color: var(--muted);
+}
+
+.pv-rep__verdict--neutral::before {
+  background: var(--line-strong);
+}
+
+/* ----------------------------------------------------------------- chips
+   Each chip is one sentence: the behaviour, the rep's rate, the team's rate.
+   The tone classes are the shared pv-tag tones so the same word means the
+   same colour wherever a tag appears; the chip's own rules paint the wash. */
+.pv-rep__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin: var(--s-1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pv-rep__chip {
+  display: inline-block;
+  max-width: 100%;
+  padding: 5px 11px;
+  border: 1px solid transparent;
+  border-radius: var(--r-pill);
+  font: var(--t-small);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.pv-rep__chip.pv-tag--danger {
+  color: var(--danger-on-wash);
+  background: rgba(var(--danger-rgb), var(--pill-wash));
+  border-color: rgba(var(--danger-rgb), 0.35);
+}
+
+.pv-rep__chip.pv-tag--good {
+  color: var(--good-on-wash);
+  background: rgba(var(--good-rgb), var(--pill-wash));
+  border-color: rgba(var(--good-rgb), 0.35);
+}
+
+/* The two numbers sit side by side in the same colour; the rep's own rate is
+   the heavier of the two, because it is the one being talked about. */
+.pv-rep__chip-v {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.pv-rep__chip-peer {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pv-rep__none {
+  margin: 0;
+  color: var(--muted);
+  font: var(--t-small);
+}
+
+/* ------------------------------------------------------------ full table
+   The detail lives behind a disclosure: a manager who wants every rate can
+   have it, and nobody else has to read past it. The summary is a control and
+   is held to the same hit-target floor and focus ring as any button — the
+   app-wide focus rule addresses buttons and links, not <summary>. */
+.pv-reps-table {
+  margin-top: var(--s-4);
+}
+
+.pv-reps-table__summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: var(--tap);
+  padding: 0 var(--s-2);
+  margin-left: calc(-1 * var(--s-2));
+  border-radius: var(--r-sm);
+  color: var(--accent-on-wash);
+  font: var(--t-small);
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.pv-reps-table__summary::-webkit-details-marker {
+  display: none;
+}
+
+.pv-reps-table__summary::before {
+  content: "▸";
+  display: inline-block;
+  transition: transform var(--dur-fast) var(--ease);
+}
+
+.pv-reps-table[open] > .pv-reps-table__summary::before {
+  transform: rotate(90deg);
+}
+
+.pv-reps-table__summary:hover {
+  background: var(--surface2);
+}
+
+.pv-reps-table__summary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* The summary says which way it will go, not where it is. */
+.pv-reps-table__hide,
+.pv-reps-table[open] > .pv-reps-table__summary .pv-reps-table__show {
+  display: none;
+}
+
+.pv-reps-table[open] > .pv-reps-table__summary .pv-reps-table__hide {
+  display: inline;
+}
+
+/* The table itself, tidied: one size up from the app's small text, the rep's
+   rate on top and the team's rate under it in the muted colour. */
+.pv-table--reps {
+  font-size: 14px;
+}
+
+/* The row head is a name, not a column label, so it drops the label shorthand
+   the shared table rule gives every th and takes the table's own size. */
+.pv-table--reps .pv-table__rep {
+  display: grid;
+  gap: 2px;
+  justify-items: start;
+  color: var(--text);
+  font: inherit;
+  font-weight: 590;
+  white-space: normal;
+}
+
+.pv-table--reps .pv-row--thin .pv-table__rep,
+.pv-table--reps .pv-row--thin td {
+  color: var(--muted);
+}
+
+.pv-table--reps .pv-sortbtn__dir {
+  margin-left: 4px;
+  font-size: var(--fs-micro);
+  color: var(--muted);
+}
+
+.pv-reps-td {
+  vertical-align: top;
+}
+
+.pv-reps-td__v {
+  display: block;
+  font-weight: 590;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The same rule as the chips: colour means at least one σ from the team, and
+   only the direction is coded. Most cells stay in the text colour. */
+.pv-reps-td__v--good {
+  color: var(--good);
+}
+
+.pv-reps-td__v--danger {
+  color: var(--danger);
+}
+
+.pv-reps-td__peer {
+  display: block;
+  margin-top: 1px;
+  color: var(--muted);
+  font-size: var(--fs-micro);
+  font-weight: 400;
+  white-space: nowrap;
+}

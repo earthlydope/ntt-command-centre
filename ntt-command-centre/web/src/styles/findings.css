@@ -1,0 +1,773 @@
+/* findings.css — the "What the detectors found" block (components/Findings.tsx)
+   and, at the foot, the fallback card a chart boundary draws
+   (components/ErrorBoundary.tsx): the two halves of the same fix, a page that
+   stays readable when one part of it is noisy or broken.
+
+   Loaded from main.tsx after the component sheets. No colour literals: every
+   colour resolves through a token in theme/tokens.css, so both themes come for
+   free. Every control clears the --tap floor (36px on a mouse, 44px for a
+   finger) and takes the app-wide focus ring. Every motion runs on the --dur
+   tokens, which the reduced-motion block in tokens.css zeroes. */
+
+.fd {
+  display: grid;
+  gap: var(--s-3);
+  margin-top: var(--s-3);
+}
+
+.fd-muted {
+  color: var(--muted);
+}
+
+/* -------------------------------------------------------------- the strip
+   Sticky under the header (whose height is the tap floor plus its breathing
+   room, see density.css) so the controls travel with the reader down the
+   table. It sits BELOW the header's z-index and above the table's own. On a
+   phone it wraps: chips on one line that scrolls sideways, segments below. */
+.fd-strip {
+  position: sticky;
+  top: calc(var(--tap, 36px) + var(--s-5));
+  z-index: 5;
+  display: grid;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: var(--elev-1);
+}
+
+.fd-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1) var(--s-2);
+}
+
+/* A chip is one category: its name, how many rows here, what is at stake in
+   the book. Pressed = the accent wash and the accent's own text tint, the same
+   pair the filter deck uses for an applied filter, so "selected" means one
+   thing across the page. A chip with no rows in this list is still shown —
+   the taxonomy is the server's — but disabled and quiet. */
+.fd-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--tap, 36px);
+  max-width: 100%;
+  padding: var(--s-1) var(--s-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface2);
+  color: var(--text-2);
+  font: var(--t-small);
+  text-align: left;
+  transition:
+    background var(--dur) var(--ease),
+    border-color var(--dur) var(--ease),
+    color var(--dur) var(--ease);
+}
+
+.fd-chip:hover:not(:disabled):not([aria-pressed="true"]) {
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+.fd-chip[aria-pressed="true"] {
+  background: rgba(var(--accent-rgb), 0.12);
+  border-color: var(--accent);
+  color: var(--accent-on-wash);
+  font-weight: 600;
+}
+
+.fd-chip:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.fd-chip__label {
+  overflow-wrap: anywhere;
+}
+
+.fd-chip__n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--r-pill);
+  background: rgba(var(--muted-rgb), 0.16);
+  color: var(--text-2);
+  font: var(--t-micro);
+  font-size: var(--fs-micro, 11px);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.fd-chip[aria-pressed="true"] .fd-chip__n {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.fd-chip__stake {
+  color: var(--muted);
+  font: var(--t-micro);
+  font-size: var(--fs-micro, 11px);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.fd-chip[aria-pressed="true"] .fd-chip__stake {
+  color: var(--accent-on-wash);
+}
+
+/* The second line: two segments, the sort, the live count. */
+.fd-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2) var(--s-3);
+}
+
+.fd-seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+}
+
+.fd-seg__label {
+  padding: 0 var(--s-2) 0 var(--s-3);
+  color: var(--muted);
+  font: var(--t-micro);
+  font-size: var(--fs-micro, 11px);
+  text-transform: uppercase;
+  letter-spacing: var(--label-track);
+}
+
+.fd-seg__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--tap, 36px);
+  padding: 0 var(--s-3);
+  border-radius: var(--r-pill);
+  color: var(--muted);
+  font: var(--t-micro);
+  font-size: var(--fs-micro, 11px);
+  white-space: nowrap;
+  transition:
+    background var(--dur) var(--ease),
+    color var(--dur) var(--ease);
+}
+
+.fd-seg__btn:hover:not(:disabled):not([aria-pressed="true"]) {
+  background: rgba(var(--muted-rgb), 0.12);
+  color: var(--text);
+}
+
+.fd-seg__btn[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.fd-seg__btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* The count, inverted on the active segment so it stays legible on the
+   accent fill. */
+.fd-seg__n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--r-pill);
+  background: rgba(var(--muted-rgb), 0.18);
+  font-variant-numeric: tabular-nums;
+  font-size: 10.5px;
+  line-height: 1;
+  transition:
+    background var(--dur) var(--ease),
+    color var(--dur) var(--ease);
+}
+
+.fd-seg__btn[aria-pressed="true"] .fd-seg__n {
+  background: var(--on-accent);
+  color: var(--accent);
+}
+
+.fd-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.fd-sort__label {
+  color: var(--muted);
+  font: var(--t-micro);
+  font-size: var(--fs-micro, 11px);
+  text-transform: uppercase;
+  letter-spacing: var(--label-track);
+}
+
+.fd-sort__select {
+  min-height: var(--tap, 36px);
+  padding: 0 var(--s-3);
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font: var(--t-small);
+  transition: border-color var(--dur) var(--ease);
+}
+
+.fd-sort__select:hover {
+  border-color: var(--line-strong);
+}
+
+.fd-sort__select:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.fd-count {
+  margin-left: auto;
+  color: var(--muted);
+  font: var(--t-small);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.fd-count strong {
+  color: var(--text);
+  font-weight: 640;
+}
+
+/* --------------------------------------------------------------- the table
+   Eight columns is wider than a phone, so the table scrolls sideways inside
+   its own wrapper and the page never does. The first two columns carry the
+   row's identity; everything else is a glance. */
+.fd-tablewrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surface);
+}
+
+.fd-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  font: var(--t-small);
+}
+
+.fd-table th {
+  padding: var(--s-2) var(--s-3);
+  background: var(--surface2);
+  color: var(--muted);
+  font: var(--t-label);
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--line);
+}
+
+.fd-table th abbr {
+  text-decoration: none;
+  border-bottom: 1px dotted var(--line-strong);
+  cursor: help;
+}
+
+.fd-cell {
+  padding: var(--s-2) var(--s-3);
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.fd-cell--n {
+  width: 1%;
+  padding-right: 0;
+}
+
+.fd-cell--entity {
+  min-width: 200px;
+}
+
+.fd-cell--stake {
+  white-space: nowrap;
+}
+
+.fd-cell--owner {
+  white-space: nowrap;
+}
+
+/* The row itself is a click target for the disclosure; the pointer says so.
+   The open row lifts onto the page surface and drops its bottom rule so it
+   reads as one card with the detail beneath it. */
+.fd-row {
+  cursor: pointer;
+  transition: background var(--dur) var(--ease);
+}
+
+.fd-row:hover {
+  background: var(--surface2);
+}
+
+.fd-row--open {
+  background: var(--surface2);
+}
+
+.fd-row--open .fd-cell {
+  border-bottom-color: transparent;
+}
+
+/* The ordinal is the disclosure control: number and a chevron that turns. */
+.fd-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: var(--tap, 36px);
+  min-height: var(--tap, 36px);
+  padding: 0 var(--s-2);
+  border-radius: var(--r-sm);
+  color: var(--muted);
+  font: var(--t-micro);
+  font-size: var(--fs-micro, 11px);
+  font-variant-numeric: tabular-nums;
+  transition:
+    background var(--dur) var(--ease),
+    color var(--dur) var(--ease);
+}
+
+.fd-toggle:hover {
+  background: rgba(var(--muted-rgb), 0.12);
+  color: var(--text);
+}
+
+.fd-toggle[aria-expanded="true"] {
+  color: var(--accent-on-wash);
+}
+
+.fd-toggle__n::before {
+  content: "#";
+  opacity: 0.6;
+}
+
+.fd-toggle__chev {
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform var(--dur) var(--ease);
+}
+
+.fd-toggle[aria-expanded="true"] .fd-toggle__chev {
+  transform: translateY(1px) rotate(225deg);
+}
+
+/* The entity: a name that is a button when there is somewhere to go. */
+.fd-entity {
+  display: inline-block;
+  max-width: 100%;
+  color: var(--text);
+  font: var(--t-body-strong);
+  font-size: var(--fs-small, 13.5px);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.fd-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap, 36px);
+  padding: 0;
+  color: var(--accent-on-wash);
+  text-decoration: underline;
+  text-decoration-color: rgba(var(--accent-rgb), 0.4);
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--dur) var(--ease);
+}
+
+.fd-link:hover {
+  text-decoration-color: currentColor;
+}
+
+.fd-entity__type {
+  display: block;
+  color: var(--muted);
+  font: var(--t-micro);
+  font-size: var(--fs-micro, 11px);
+  font-weight: 500;
+}
+
+/* The category, short and quiet: a fact about the row, not a verdict. */
+.fd-cat {
+  display: inline-block;
+  max-width: 100%;
+  padding: 3px 8px;
+  border-radius: var(--r-sm);
+  background: rgba(var(--muted-rgb), 0.1);
+  color: var(--text-2);
+  font: var(--t-micro);
+  font-size: var(--fs-micro, 11px);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+/* Severity: a short track with the number beside it. The fill takes the
+   priority's tone — the server's classification, not a threshold drawn here. */
+.fd-sev {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.fd-sev__track {
+  display: block;
+  width: 64px;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--track);
+  overflow: hidden;
+}
+
+.fd-sev__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: var(--muted);
+  transition: width var(--dur-slow) var(--ease);
+}
+
+.fd-sev__fill--danger {
+  background: var(--danger);
+}
+
+.fd-sev__fill--warn {
+  background: var(--warn);
+}
+
+.fd-sev__fill--accent {
+  background: var(--accent);
+}
+
+.fd-sev__fill--good {
+  background: var(--good);
+}
+
+.fd-sev__n {
+  min-width: 2.2ch;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* ------------------------------------------------------------ group header
+   A thin rule with the priority word when the list is sorted by it. */
+.fd-group td {
+  padding: var(--s-2) var(--s-3);
+  background: var(--surface2);
+  border-bottom: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+}
+
+.fd-group td > * + * {
+  margin-left: var(--s-2);
+}
+
+.fd-group__n {
+  color: var(--muted);
+  font: var(--t-small);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ----------------------------------------------------------- the open row
+   The detail row animates from nothing to its own height through the grid
+   trick: the clip is a one-row grid whose row goes 0fr to 1fr, and the body
+   inside it has min-height 0 and overflow hidden so it can actually be zero.
+   Closing plays the same animation backwards and the row unmounts when it
+   ends. Both run on --dur-slow, which reduced motion zeroes. */
+.fd-detail td {
+  padding: 0 var(--s-3) 0 var(--s-3);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface2);
+}
+
+.fd-detail__clip {
+  display: grid;
+  grid-template-rows: 1fr;
+  animation: fd-open var(--dur-slow) var(--ease);
+}
+
+.fd-detail--closing .fd-detail__clip {
+  animation: fd-close var(--dur-slow) var(--ease) forwards;
+}
+
+.fd-detail__body {
+  min-height: 0;
+  overflow: hidden;
+}
+
+@keyframes fd-open {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+  to {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+}
+
+@keyframes fd-close {
+  from {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+  to {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+}
+
+/* Indented to the entity column, with the accent rule the action cards carry
+   on their left, so the open detail reads as belonging to the row above. */
+.fd-detail__inner {
+  display: grid;
+  gap: var(--s-3);
+  margin: var(--s-2) 0 var(--s-3) var(--s-2);
+  padding: var(--s-2) 0 var(--s-2) var(--s-4);
+  border-left: 3px solid var(--accent);
+}
+
+.fd-detail__ref {
+  color: var(--muted);
+  font: var(--t-micro);
+  font-size: var(--fs-micro, 11px);
+  font-weight: 500;
+}
+
+.fd-detail__ref code {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+}
+
+.fd-detail__q {
+  color: var(--text-2);
+  font: var(--t-body);
+  font-style: italic;
+}
+
+.fd-detail__facts {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+}
+
+.fd-detail__fact {
+  display: grid;
+  grid-template-columns: minmax(96px, 140px) minmax(0, 1fr);
+  gap: var(--s-3);
+  align-items: baseline;
+}
+
+.fd-detail__fact dt {
+  color: var(--muted);
+  font: var(--t-label);
+}
+
+.fd-detail__fact dd {
+  margin: 0;
+  color: var(--text);
+  font: var(--t-body);
+  overflow-wrap: anywhere;
+}
+
+/* The next step, quoted: it is the detector's recommendation, not ours. */
+.fd-detail__do {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: var(--s-2) var(--s-3);
+  border-left: 2px solid var(--accent);
+  background: rgba(var(--accent-rgb), 0.06);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+}
+
+.fd-detail__do-label {
+  color: var(--accent-on-wash);
+  font: var(--t-micro);
+  font-size: var(--fs-micro, 11px);
+  text-transform: uppercase;
+  letter-spacing: var(--label-track);
+}
+
+.fd-detail__do p {
+  margin: 0;
+  color: var(--text);
+  font: var(--t-body-strong);
+}
+
+.fd-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+/* Buttons. One shape for "Open deal", "Filter the page to this", "Ask about
+   this" and "Show all", at the tap floor. A pressed scope button says the
+   page is already filtered to this row. */
+.fd-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--tap, 36px);
+  padding: var(--s-2) var(--s-4);
+  border: 1px solid var(--accent);
+  border-radius: var(--r-sm);
+  color: var(--accent-on-wash);
+  font: var(--t-small);
+  font-weight: 600;
+  transition:
+    background var(--dur) var(--ease),
+    color var(--dur) var(--ease);
+}
+
+.fd-btn:hover {
+  background: rgba(var(--accent-rgb), 0.12);
+}
+
+.fd-btn[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.fd-btn__glyph {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.fd-linkbtn {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap, 36px);
+  padding: 0;
+  color: var(--accent-on-wash);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.fd-more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.fd-foot {
+  color: var(--muted);
+  font: var(--t-small);
+}
+
+/* ------------------------------------------------------------- entrance
+   The body is keyed on the selection, so a change remounts it and it fades
+   in. Opacity only: WebKit has never been reliable about transforms on table
+   row groups, and a fade is enough to say "the list changed". Reduced motion
+   zeroes --dur and the entrance is a cut. */
+.fd-body {
+  animation: fd-in var(--dur) var(--ease);
+}
+
+@keyframes fd-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ----------------------------------------------------------------- phone
+   The strip's chips become one row that scrolls sideways so eight of them do
+   not eat the fold; the controls stack; the count takes its own line. */
+@media (max-width: 720px) {
+  .fd-strip {
+    padding: var(--s-2);
+    border-radius: var(--r-sm);
+  }
+
+  .fd-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: thin;
+  }
+
+  .fd-chip {
+    flex-shrink: 0;
+  }
+
+  .fd-controls {
+    gap: var(--s-2);
+  }
+
+  .fd-count {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+
+  .fd-detail__fact {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .fd-detail__inner {
+    padding-left: var(--s-3);
+  }
+}
+
+/* ------------------------------------------------------- chart fallback
+   The card an ErrorBoundary draws in place of a chart whose module threw. It
+   borrows the card chrome from app.css (.card, .card-head, .card-empty) so it
+   is the same size and shape as the chart it stands in for; these rules only
+   lay out the message, the muted error line and the retry. */
+.chart-fallback__body {
+  gap: var(--s-3);
+  place-content: center;
+}
+
+.chart-fallback__body p {
+  margin: 0;
+  max-width: 44ch;
+}
+
+.chart-fallback__err {
+  display: block;
+  max-width: 100%;
+  padding: var(--s-1) var(--s-2);
+  border-radius: var(--r-sm);
+  background: rgba(var(--muted-rgb), 0.1);
+  color: var(--muted);
+  font-family: var(--font-num);
+  font-size: var(--fs-micro, 11px);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.chart-fallback__retry {
+  margin-top: 0;
+}

@@ -1,0 +1,139 @@
+/* pages.css — page-specific blocks that belong to one page rather than to the
+   template: today, the executive brief's "three things this platform watches"
+   row (PageView.tsx UseCasesBlock). Loaded from PageView.tsx after app.css.
+
+   No colour literals: every colour resolves through a token in
+   theme/tokens.css, so both themes come for free. The persona accent is
+   var(--persona), which the shell sets from data-persona on <html>. */
+
+/* --------------------------------------------------------------- the row
+   Three tiles on a desktop, one column under 900px. minmax(0, 1fr) so a long
+   figure cannot push a column wider than its share and make the page scroll.
+   The section sits ABOVE the quarters table because it is the sentence the
+   rest of the brief is evidence for. */
+.pv-usecases {
+  margin-top: var(--s-6);
+}
+
+.pv-usecases__row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: usecase;
+}
+
+@media (max-width: 900px) {
+  .pv-usecases__row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ------------------------------------------------------------------ tile
+   A card in the page's own surface with the persona rule on the left, the
+   same mark the action cards carry, so the row reads as "yours" rather than
+   as a third kind of chrome. The button is pinned to the bottom so the three
+   tiles line up whatever their one-liners wrap to. */
+.pv-usecase {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: var(--s-2);
+  min-width: 0;
+  padding: var(--s-4) var(--s-4) var(--s-4) var(--s-5);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--persona);
+  border-radius: var(--r);
+  transition: border-color var(--dur) var(--ease);
+}
+
+.pv-usecase:hover {
+  border-color: var(--line-strong);
+  border-left-color: var(--persona);
+}
+
+/* The ordinal sits in the gutter the left rule makes, small and muted: it says
+   "one of three", not "first". */
+.pv-usecase__n {
+  position: absolute;
+  top: var(--s-3);
+  right: var(--s-3);
+  margin: 0;
+  color: var(--muted);
+  font: var(--t-micro);
+  font-variant-numeric: tabular-nums;
+}
+
+.pv-usecase__title {
+  margin: 0;
+  padding-right: var(--s-5);
+  font: var(--t-h3);
+  color: var(--text);
+}
+
+.pv-usecase__line {
+  margin: 0;
+  color: var(--text-2);
+  font: var(--t-small);
+}
+
+/* ---------------------------------------------------------------- figures
+   Label over value, two or three across. The values are strings the server
+   already formatted, set in the numeric face so a "$130K" and a "0.595" sit
+   on the same baseline. */
+.pv-usecase__figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: var(--s-2) var(--s-3);
+  margin: var(--s-1) 0 0;
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--line);
+  align-self: start;
+}
+
+.pv-usecase__figure {
+  min-width: 0;
+}
+
+.pv-usecase__figure dt {
+  color: var(--muted);
+  font: var(--t-label);
+  letter-spacing: var(--label-track);
+}
+
+.pv-usecase__figure dd {
+  margin: 2px 0 0;
+  color: var(--text);
+  font: var(--t-body-strong);
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------------ button
+   A real button, 36px tall, in the same outline style as the retry and link
+   buttons in app.css. It dispatches the page change the sidebar would. */
+.pv-usecase__go {
+  justify-self: start;
+  min-height: 36px;
+  margin-top: var(--s-2);
+  padding: 6px 13px;
+  border: 1px solid var(--accent);
+  border-radius: var(--r-sm);
+  color: var(--accent-on-wash);
+  font: var(--t-small);
+  font-weight: 600;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.pv-usecase__go:hover {
+  background: rgba(var(--accent-rgb), var(--pill-wash));
+}
+
+.pv-usecase__go:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}

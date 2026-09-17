@@ -1,0 +1,399 @@
+/* persona.css — the persona picker (PersonaPicker.tsx). Loaded after app.css and density.css.
+   No colour literals: every colour resolves through a token in theme/tokens.css.
+
+   WHAT THE PANEL DOES. Three role rows at rest. Put the pointer or the focus
+   ring on one and the other two fold away — not dimmed, gone — while that role's
+   own people open in the space they leave. The customer asked for exactly this:
+   hide the other persona types and show only the relevant people under the one
+   being looked at. Leaving the panel brings all three back.
+
+   HOW THE FOLD WORKS. A folded row animates its grid track from 1fr to 0fr, so
+   the collapse is measured against the row's real height and not a guessed
+   max-height that would either clip a wrapped line or spend half the duration
+   doing nothing. The row inside is min-height 0 with its overflow hidden and
+   its vertical padding going to zero with the track, which together are what
+   let the track reach nothing. Folded rows stay in the document and stay
+   focusable, because Tab is how a keyboard user reaches the other roles once
+   one is open; they are only removed from the pointer.
+
+   WHY THE PANEL HAS A FLOOR. The people list mounts on hover. Without a floor
+   the panel would be taller with one role open than at rest for the sales roster
+   and shorter for the single executive region, and a menu that changes height
+   under the pointer is the most reliable way to make hover feel like a fault.
+   The floor is the resting height — built from tokens here for the first
+   paint, then measured by the component and handed back as --ppick-floor —
+   so the people always appear in the room the folded roles leave and the
+   outline never moves.
+
+   THE MARKS. Each isometric solid sits on a tile washed with its own persona
+   colour. The tile's colour IS the accent — set inline from the server's
+   persona definition — so the wash is color-mix of currentColor and the
+   stylesheet never names a hue. The shadow under the solid follows its
+   silhouette rather than the tile, which is what makes it read as an object
+   resting on a surface rather than an icon in a box. */
+
+/* ----------------------------------------------------------------- panel */
+
+.who-menu {
+  /* Wide enough that the longest role line ("Find the mistakes that keep
+     repeating, and fix them.") sits beside its tile without wrapping, and a
+     name, an open-deal count and a team size share a row; never narrower
+     than a name and two counts need. Between those it yields to the
+     viewport, less a gutter each side. The old height cap and scroll go: the
+     people list is the thing that scrolls, and a second scroller around it
+     would trap the wheel and clip the focus ring. */
+  width: clamp(360px, calc(100vw - 2 * var(--s-4)), 440px);
+  max-height: none;
+  overflow: visible;
+  padding: var(--s-2);
+}
+
+.ppick {
+  /* The sizes the floor is built from. The row is the tile plus its padding;
+     the head is one label line plus its padding. */
+  --ppick-tile: 44px;
+  --ppick-gap: var(--s-1);
+  --ppick-row: calc(var(--ppick-tile) + 2 * var(--s-2));
+  --ppick-head: 30px;
+
+  display: grid;
+  grid-template-rows: auto 1fr;
+  /* The token-built floor is what the first paint stands on; the component
+     then measures the real resting height and hands it over as
+     --ppick-floor, and the larger of the two wins. That is what keeps the
+     panel still when a role line has wrapped and the rows are taller than
+     the tokens say. */
+  min-height: max(
+    calc(var(--ppick-head) + 3 * var(--ppick-row) + 2 * var(--ppick-gap)),
+    var(--ppick-floor, 0px)
+  );
+  color: var(--text);
+}
+
+/* The container takes focus on arrival. The global ring is drawn outside the
+   element; here it would sit on the panel's edge, so it is drawn just inside. */
+.ppick:focus-visible {
+  outline-offset: -2px;
+  border-radius: var(--r);
+}
+
+.ppick__head {
+  margin: 0;
+  padding: var(--s-1) var(--s-3) var(--s-2);
+  font: var(--t-label);
+  color: var(--muted);
+}
+
+/* ----------------------------------------------------------------- roles */
+
+.ppick__list {
+  display: block;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ppick__item {
+  display: grid;
+  grid-template-rows: 1fr;
+  margin: 0 0 var(--ppick-gap);
+  opacity: 1;
+  transition:
+    grid-template-rows var(--dur) var(--ease),
+    margin var(--dur) var(--ease),
+    opacity var(--dur) var(--ease);
+}
+
+.ppick__item:last-child {
+  margin-bottom: 0;
+}
+
+/* Folded. Height, spacing and opacity go to nothing together, and the row
+   stops answering the pointer so a hover on its way past cannot reopen it. */
+.ppick__item--shy {
+  grid-template-rows: 0fr;
+  margin-bottom: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* The row is one grid: the tile down the left across both lines; the name,
+   the role and the "you are here" tag across the first line; the job to be
+   done on the second line, given the whole width so it does not wrap under a
+   tag it never shares a line with. The text wrapper contributes its children
+   to the grid rather than a box of its own. */
+.ppick__row {
+  display: grid;
+  grid-template-columns: var(--ppick-tile) auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-items: baseline;
+  column-gap: var(--s-3);
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r);
+  color: var(--text);
+  text-align: left;
+  transition:
+    background var(--dur) var(--ease),
+    padding var(--dur) var(--ease);
+}
+
+/* A zero track cannot shrink a box below its own padding, so a folded row
+   would still stand sixteen pixels tall with nothing in it. The vertical
+   padding goes with the track; the sides stay so the text does not slide
+   while the row closes. */
+.ppick__item--shy > .ppick__row {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.ppick__row:hover,
+.ppick__item--open > .ppick__row {
+  background: var(--surface2);
+}
+
+.ppick__text {
+  display: contents;
+}
+
+.ppick__name {
+  grid-column: 2;
+  grid-row: 1;
+  font: var(--t-body-strong);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.ppick__role {
+  grid-column: 3;
+  grid-row: 1;
+  overflow: hidden;
+  font: var(--t-small);
+  color: var(--text-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ppick__jtbd {
+  grid-column: 2 / -1;
+  grid-row: 2;
+  font: var(--t-small);
+  color: var(--muted);
+}
+
+/* The role already in use. A dot in the persona colour, because that colour is
+   by definition the one the shell is wearing. */
+.ppick__now {
+  grid-column: 4;
+  grid-row: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: center;
+  font: var(--t-micro);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.ppick__now::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--persona);
+}
+
+/* ----------------------------------------------------------------- marks */
+
+.ppick__mark {
+  /* Down the left, across both text lines, centred on them — the tile is
+     the one thing in the row that does not sit on a baseline. */
+  grid-column: 1;
+  grid-row: 1 / -1;
+  align-self: center;
+  display: grid;
+  place-items: center;
+  width: var(--ppick-tile);
+  height: var(--ppick-tile);
+  border-radius: 12px;
+  /* One lever for both themes: the pill wash, scaled up a little because a
+     tile has to read as a tile on its own, where a pill has text on it. */
+  background: color-mix(in srgb, currentColor calc(var(--pill-wash) * 130%), transparent);
+  transition: transform var(--dur) var(--ease);
+}
+
+.ppick__icon {
+  display: block;
+  filter: drop-shadow(0 3px 4px var(--drawer-shadow));
+}
+
+/* A small lift when the row is live, so the solid comes up to meet you. */
+.ppick__row:hover .ppick__mark,
+.ppick__item--open .ppick__mark {
+  transform: translateY(-2px) scale(1.06);
+}
+
+/* ---------------------------------------------------------------- people */
+
+.ppick__people {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  padding-top: var(--s-1);
+}
+
+.ppick__people-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-2);
+  margin: 0;
+  padding: var(--s-2) var(--s-3) var(--s-1);
+  font: var(--t-label);
+  color: var(--text-2);
+}
+
+.ppick__people-count {
+  font: var(--t-micro);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.ppick__scroll {
+  margin: 0;
+  /* Room for the inset focus ring on the first and last rows. */
+  padding: 2px 0;
+  list-style: none;
+  max-height: 52vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.ppick__person-wrap {
+  margin: 0;
+}
+
+.ppick__person {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  width: 100%;
+  /* 40px on a mouse; the hit-target floor lifts it to 44px for a finger. */
+  min-height: max(40px, var(--tap));
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  text-align: left;
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.ppick__person:hover {
+  background: var(--surface2);
+}
+
+/* The person already in use: a bar in the persona colour down the left edge,
+   on a thin wash of the same hue. */
+.ppick__person--on {
+  background: color-mix(in srgb, var(--persona) calc(var(--pill-wash) * 100%), transparent);
+  box-shadow: inset 3px 0 0 var(--persona);
+}
+
+.ppick__person--on:hover {
+  background: color-mix(in srgb, var(--persona) calc(var(--pill-wash) * 150%), transparent);
+}
+
+/* Inside a scroller the outside ring would be clipped at the edges. */
+.ppick__person:focus-visible {
+  outline-offset: -2px;
+}
+
+.ppick__person-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font: var(--t-body-strong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ppick__person-meta,
+.ppick__person-team {
+  flex: 0 0 auto;
+  font: var(--t-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.ppick__empty {
+  margin: 0;
+  padding: var(--s-3);
+  font: var(--t-small);
+  color: var(--muted);
+}
+
+/* The live region. Same recipe as app.css's .visually-hidden: present for a
+   screen reader, absent from the layout. */
+.ppick__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------------------------------------------------------------- header
+   The trigger's tile keeps its solid persona fill; the mark inside it is
+   knocked out in the standard on-accent tone so the three faces stay three
+   tones against the fill. Same corner treatment as the tiles in the panel,
+   so the header object is recognisably the one that was picked. */
+
+.who-avatar {
+  --mark: var(--on-accent);
+  border-radius: var(--r-sm);
+}
+
+.who-avatar > .ppick__icon {
+  filter: drop-shadow(0 1px 1px var(--drawer-shadow));
+}
+
+/* --------------------------------------------------------------- narrow
+   At phone width a panel hung off the trigger's right edge would run off the
+   left of the screen at its minimum width, so it leaves the trigger and
+   takes the viewport, a gutter each side, just under the header — the move
+   the persona menu made at this width before this one replaced it. The
+   offset is the header's own height formula from density.css plus the gap
+   the panel keeps at any width. The people list gives up a little height so
+   the head and the open role stay in view above it. */
+@media (max-width: 720px) {
+  .who-menu {
+    position: fixed;
+    top: calc(var(--tap) + var(--s-5) + var(--s-2));
+    right: var(--s-2);
+    left: var(--s-2);
+    width: auto;
+  }
+  .ppick__scroll {
+    max-height: 46vh;
+  }
+}
+
+/* The fold and the lift are the only motion here, and both are built on the
+   duration tokens that tokens.css zeroes under reduced motion. Restated so a
+   later stylesheet cannot reintroduce it for these elements. */
+@media (prefers-reduced-motion: reduce) {
+  .ppick__item,
+  .ppick__mark,
+  .ppick__row,
+  .ppick__person {
+    transition: none;
+  }
+}

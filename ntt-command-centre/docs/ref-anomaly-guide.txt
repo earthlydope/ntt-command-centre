@@ -1,0 +1,164 @@
+
+Pipeline Anomaly Detection — Reference Guide
+Companion guide to the anomaly detection Excel export (Client Anomaly Report)
+Executive Summary
+This guide explains the anomaly and outlier detection capability built on top of the North America pipeline data. It is meant to be read alongside the accompanying Excel export, which lists every specific deal, rep, account, or segment currently flagged.
+Rather than relying on a single fixed rule applied everywhere, most checks compare each deal, rep, or account against what is typical for its own peer group — similar deals, similar reps, similar accounts — so that what counts as “unusual” reflects the natural variation already present in the business. A small number of checks instead use a straightforward, disclosed business rule (for example, comparing a deal's cycle time against the standard target) where that is the more meaningful way to judge it.
+The anomalies are organized into seven categories, covering: whether a deal's own history makes logical sense; whether the pipeline is healthy, active, and well covered; whether the dollar values involved can be trusted; whether the sales process itself can be trusted; behavioral patterns that only become meaningful when they repeat for the same person; concentration risk and cross-sell opportunity; and a machine-learning pass that looks at many signals together to catch combinations a single rule would miss.
+Not every flagged item represents a problem. The Cross-Sell items in particular, and some Rep Behavior items, are framed as upside opportunities rather than risks, and should be presented that way to leadership.
+How to Use This Guide
+The table below lists every anomaly type the system currently detects, grouped by category. For each type:
+Meaning — what the anomaly represents and what typically causes it, in plain terms.
+Potential Action — what someone reviewing the data should do next.
+The Excel export lists every specific instance currently flagged, along with a severity score used to prioritize which ones to look at first — the highest-scoring items combine a large deal, rep, or account value with an unusually extreme reading, making them the best starting point for a review or a demo.
+Anomaly Reference
+Anomaly Type
+	Meaning
+	Potential Action
+	
+Sequence Integrity
+Checks that a deal's own history makes logical sense — that it moved through the sales process in a sensible order.
+	
+Stage Skipping
+stage_skip
+	A deal's recorded history jumps straight from an early stage to a much later one, missing the steps in between.
+	Confirm the deal was genuinely worked through the stages it skipped. If it clusters on one rep or team, treat it as a coaching or process-adoption conversation.
+	
+Forecast Confidence Reversal
+forecast_regression
+	A deal's sales confidence rating reached a high point at some stage and later dropped back down, rather than only building as the deal progressed.
+	Treat the rep's current confidence rating on this deal with some caution and ask for a fresh assessment.
+	
+Pipeline Coverage
+Looks at whether the pipeline is healthy, active, and large enough — both for individual deals and for the business as a whole. A deeper-dive complement to the existing budget and coverage metrics, showing where within the business a coverage issue exists.
+	
+Stalled Pipeline
+stalled_pipeline
+	An open deal that hasn't had any activity or update logged in a long time, even though it's still counted as active pipeline.
+	The account/opportunity owner should confirm the deal's real status, update it, or close it out. Best used as a prioritized worklist for a pipeline review, not a final verdict on any one deal.
+	
+Extended Sales Cycle
+sales_cycle_outlier
+	A deal — open or already closed — has taken considerably longer than the standard expected time to move through the sales process.
+	Review what is holding (or held) the deal up, and whether the extended timeline reflects genuine complexity or a process breakdown.
+	
+Coverage Gap
+coverage_hole
+	A combination of business line and product/service area that has a sales target assigned to it, but very little active pipeline behind it.
+	The regional or segment lead should prioritize generating new opportunities in this specific area.
+	
+Win-Rate Shortfall
+win_rate_outlier
+	A rep, business line, or product/service area whose rate of winning deals is well below what's typical elsewhere in the business.
+	Apply a higher pipeline-coverage expectation here until win rates recover, and investigate whether it's a qualification, competitive, or execution issue.
+	
+Concentrated Quarter Dependency
+top_deal_dependency
+	A large share of what's needed to hit a quarter's target rests on just a handful of very large deals.
+	Actively diversify the pipeline for that quarter rather than relying on a few large deals to land.
+	
+Value Integrity
+Checks whether the dollar figures attached to a deal are trustworthy — the value itself, how it moved over time, and the profitability behind it.
+	
+Value Shrinkage
+value_shrinkage
+	A deal was originally logged at a considerably higher value than what it eventually settled at.
+	Review the rep's process for sizing and qualifying deals early on. If this repeats for the same rep, see Rep Value Shrink Rate below.
+	
+Value Inflation
+value_inflation
+	A deal grew significantly in value compared to when it was first logged.
+	Confirm the growth reflects a genuine scope increase or upsell, rather than the deal being under-scoped at the outset.
+	
+Deal Size Outlier
+deal_size_outlier
+	A deal's dollar value is unusually large or small compared to similar deals of the same type.
+	Double-check the amount was entered correctly before it feeds into pipeline totals and forecasts.
+	
+Margin Outlier
+margin_outlier
+	A deal's profit margin is unusually high or low compared to similar deals of the same type.
+	For unusually low margins, review pricing or discounting; for unusually high margins, confirm the cost basis was captured correctly.
+	
+Loss-Making Win
+won_loss_making_deal
+	A deal was won, but it generates zero or negative profit.
+	Finance or the deal desk should confirm this was a deliberate pricing decision rather than an error.
+	
+Deal Governance
+Focused on whether the sales process itself can be trusted — not whether the pipeline looks healthy, but whether the numbers were arrived at properly.
+	
+Quarter-End Clustering
+quarter_end_clustering
+	An unusually large number of deals close right at the very end of a financial quarter, more than a natural, steady closing pattern would produce.
+	Spot-check a sample of these deals to confirm they closed organically, rather than being pulled forward to hit a deadline.
+	
+Flash Close
+flash_close
+	A deal moved from open to won in an implausibly short time compared to how long similar deals normally take.
+	Confirm the deal's qualification history is genuine before relying on its numbers — it may have been worked outside the system and entered after the fact.
+	
+Rep Behavior
+Looks for patterns that only become meaningful when they repeat for the same person, rather than being a one-off on a single deal. Several of these pair with a Value Integrity or Sequence Integrity item above — one instance at the deal level is normal variation; the same pattern repeating for one rep more than their peers is what turns it into a signal worth acting on.
+	
+Rep Forecast Reliability
+rep_forecast_reliability
+	A rep whose deals show the Forecast Confidence Reversal pattern more often than their peers.
+	Discount this rep's confidence ratings and review their forecasting habits directly with them.
+	
+Rep Value Shrink Rate
+rep_value_shrink_rate
+	A rep whose deals shrink in value more often than their peers.
+	Review this rep's opportunity-qualification and sizing process specifically.
+	
+Rep Sandbagging Rate
+rep_sandbagging_rate
+	A rep whose deals grow in value well beyond their initial estimate more often than their peers — the opposite pattern to shrinkage.
+	Coach on early sizing accuracy; this rep may be consistently under-forecasting their deals' true potential.
+	
+Rep Pipeline Concentration
+rep_concentration_risk
+	One rep holds an unusually large share of the total open pipeline.
+	A succession/coverage-planning matter for leadership — consider the business risk if this rep were unavailable.
+	
+New-Business Mix Risk
+new_business_mix_risk
+	A rep's deals are almost entirely renewals, with very little new business.
+	Check this rep's pipeline-generation activity — over-reliance on renewals is a growth risk that won't show up until it's too late to correct quickly.
+	
+Concentration & Cross-Sell
+Looks at where the business may be overly dependent on a small number of accounts or industries, and where there's clear room to sell more into existing accounts. The Cross-Sell items are framed as upside opportunities, not risks.
+	
+Industry Concentration Risk
+industry_concentration_risk
+	An unusually large share of total business is concentrated in a single industry.
+	Review diversification strategy and exposure to that industry's specific budget cycles.
+	
+Account Concentration Risk
+account_concentration_risk
+	An unusually large share of total business is concentrated in a single account.
+	A classic “whale risk” — assess the impact of losing this account and plan retention/diversification accordingly.
+	
+Cross-Sell Whitespace
+whitespace_single_lob_account
+	A large account only buys from a single business line, when similarly-sized accounts typically buy from several.
+	A genuine growth opportunity — consider pitching the business line(s) this account doesn't yet have, based on what similar accounts have found value in.
+	
+Portfolio Mix Imbalance
+portfolio_mix_imbalance
+	A large account's spend is heavily skewed toward one type of offering (for example, product) with very little of another (for example, services), compared to the business's overall target mix.
+	A cross-sell candidate — explore attaching the underrepresented offering type for this account.
+	
+Multivariate ML
+Uses a machine-learning model that looks at many signals about a deal together — size, margin, activity, timing, and more — rather than checking one rule at a time.
+	
+Multivariate Outlier
+ml_multivariate_outlier
+	A deal that doesn't resemble its peers when many signals are considered together, even if no single signal on its own looks unusual.
+	Review manually — this is a ranking signal meant to prioritize deals for a closer look, not a specific, explainable rule. Especially valuable when it agrees with one of the rule-based flags above.
+	
+Additional Notes
+Individual vs. rep-level signals: Several anomalies exist at both the individual-deal level (Value Shrinkage, Forecast Confidence Reversal) and the rep level (Rep Value Shrink Rate, Rep Sandbagging Rate, Rep Forecast Reliability). One instance on one deal is normal variation; the same pattern repeating for one rep more often than their peers is the signal worth acting on.
+Risk vs. opportunity framing: Most categories flag something to investigate or fix. Cross-Sell Whitespace and Portfolio Mix Imbalance are the exception — these identify accounts with room to grow, and should be presented to leadership as upside, not as problems.
+A flag is a starting point, not a verdict: Every anomaly here is designed to prompt a short human review, not to make an automatic judgment. The recommended action in each row reflects that — confirm, review, or double-check, rather than assume something is wrong.
+This is a living reference and will be refined as the detection approach is validated against real Salesforce data.

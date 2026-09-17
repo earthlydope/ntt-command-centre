@@ -1,0 +1,10 @@
+feature,skewness,benchmark_method,benchmark_value,corr_with_win,direction,above_benchmark,below_benchmark
+confidence_at_cutoff,-0.98,mean,0.587,0.1246,higher_is_better,GREEN,RED
+revenue_at_cutoff,19.11,median,17692.97,-0.0094,lower_is_better,RED,GREEN
+gm_pct_at_cutoff,3.06,median,16.562,-0.0149,lower_is_better,RED,GREEN
+n_stage_changes,-1.81,median,5.0,0.1888,higher_is_better,GREEN,RED
+n_forecast_changes,-0.76,mean,3.291,0.1647,higher_is_better,GREEN,RED
+n_revenue_revisions,0.65,mean,2.029,0.0866,higher_is_better,GREEN,RED
+avg_days_completed_stage,3.76,median,8.6,-0.0422,lower_is_better,RED,GREEN
+deal_age_at_cutoff_days,1.18,median,62.0,0.0053,higher_is_better,GREEN,RED
+owner_historical_win_rate,-0.3,mean,0.373,0.0018,higher_is_better,GREEN,RED

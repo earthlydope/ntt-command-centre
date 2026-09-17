@@ -1,0 +1,323 @@
+/* ============================================================== icons.css
+   The icon system's chrome: the header's icon buttons, the sidebar's marks,
+   and the KPI tile — its raised icon square, its lift on hover, and the
+   popover every tile opens. The marks themselves are drawn in
+   components/icons.tsx and sized there; nothing in this file sets an icon's
+   width or height, which is how "every icon a standard size" stays true.
+
+   Loaded last, so it is the final word on what it styles. Tokens only; both
+   themes; every movement rides on --dur so reduced motion neutralises it.
+   ========================================================================= */
+
+/* The lit top edge of a raised tile. It has to be a light wash on both
+   themes, and the only light colours the palette owns are the text on dark
+   and the surface on light, so the edge is cut from whichever is light. */
+:root {
+  --kpi-hi: color-mix(in srgb, var(--text) 32%, transparent);
+}
+
+:root[data-theme="light"] {
+  --kpi-hi: color-mix(in srgb, var(--surface) 85%, transparent);
+}
+
+/* An inline SVG is inline-level by default and picks up a descender's worth
+   of slack under it; as a block it sits exactly where its box is. */
+.icon,
+.solid {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------- header */
+
+/* The two icon-only buttons are a 40px square on a mouse, and never under
+   the touch floor where the pointer is coarse. */
+.ghost.hdr-icon {
+  width: max(40px, var(--tap));
+  height: max(40px, var(--tap));
+}
+
+/* --------------------------------------------------------------- sidebar */
+
+.side__glyph {
+  display: grid;
+  place-items: center;
+}
+
+/* -------------------------------------------------------------- KPI tile */
+
+/* The slot is what the row's grid lays out: the tile fills it, and the
+   popover is positioned against it. */
+.kpi-row__slot {
+  position: relative;
+  display: grid;
+  min-width: 0;
+}
+
+.kpi-row__slot--open {
+  z-index: 35;
+}
+
+/* The tile is the slot's only grid item and fills it, so a row of tiles
+   stays the height of its tallest label with or without a sparkline. */
+button.kpi-row__tile {
+  width: 100%;
+  align-self: stretch;
+  justify-self: stretch;
+  cursor: pointer;
+  transition:
+    transform var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease),
+    border-color var(--dur) var(--ease);
+}
+
+/* The whole card lifts, and holds the lift while its popover is open so the
+   thing you are reading about is visibly the thing that is raised. */
+button.kpi-row__tile:hover,
+.kpi-row__slot--open > .kpi-row__tile {
+  transform: translateY(-2px);
+  border-color: var(--line-strong);
+  box-shadow:
+    0 14px 28px -12px var(--drawer-shadow),
+    var(--elev-1);
+}
+
+.kpi-row__tile--selected {
+  border-color: var(--persona);
+  box-shadow: inset 0 0 0 1px var(--persona);
+}
+
+/* The raised icon square: a tone-tinted gradient, a lit top edge, a shaded
+   bottom edge and a soft shadow in the tone's own hue. --kpi-rgb is set by
+   the tone rules below and read here, so one gradient serves five tones. */
+.kpi-row__tile .kpi-row__icon,
+.kpi-pop .kpi-row__icon {
+  --kpi-rgb: var(--muted-rgb);
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  color: var(--muted);
+  background: linear-gradient(
+    155deg,
+    rgba(var(--kpi-rgb), 0.36) 0%,
+    rgba(var(--kpi-rgb), 0.14) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 var(--kpi-hi),
+    inset 0 -1px 0 rgba(var(--kpi-rgb), 0.32),
+    0 1px 2px var(--drawer-shadow),
+    0 8px 16px -8px rgba(var(--kpi-rgb), 0.6);
+  transition:
+    transform var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+}
+
+.kpi-row__tile--accent .kpi-row__icon,
+.kpi-pop--accent .kpi-row__icon {
+  --kpi-rgb: var(--accent-rgb);
+  color: var(--accent);
+}
+
+.kpi-row__tile--good .kpi-row__icon,
+.kpi-pop--good .kpi-row__icon {
+  --kpi-rgb: var(--good-rgb);
+  color: var(--good);
+}
+
+.kpi-row__tile--warn .kpi-row__icon,
+.kpi-pop--warn .kpi-row__icon {
+  --kpi-rgb: var(--warn-rgb);
+  color: var(--warn);
+}
+
+.kpi-row__tile--danger .kpi-row__icon,
+.kpi-pop--danger .kpi-row__icon {
+  --kpi-rgb: var(--danger-rgb);
+  color: var(--danger);
+}
+
+.kpi-row__tile--neutral .kpi-row__icon,
+.kpi-pop--neutral .kpi-row__icon {
+  --kpi-rgb: var(--muted-rgb);
+  color: var(--muted);
+}
+
+/* The square tilts and comes forward with the card, like a block being
+   picked up. Reduced motion makes the change instant; it does not remove
+   the raised state, which is information. */
+button.kpi-row__tile:hover .kpi-row__icon,
+.kpi-row__slot--open .kpi-row__tile .kpi-row__icon {
+  transform: translateY(-2px) rotate(-6deg) scale(1.06);
+  box-shadow:
+    inset 0 1px 0 var(--kpi-hi),
+    inset 0 -1px 0 rgba(var(--kpi-rgb), 0.32),
+    0 2px 3px var(--drawer-shadow),
+    0 12px 22px -8px rgba(var(--kpi-rgb), 0.7);
+}
+
+/* The mark at the head of the popover is the same square, larger. */
+.kpi-pop .kpi-pop__mark {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+}
+
+/* --------------------------------------------------------------- popover */
+
+.kpi-pop {
+  position: absolute;
+  top: calc(100% + var(--s-2));
+  left: 0;
+  z-index: 35;
+  width: max-content;
+  min-width: 264px;
+  max-width: min(340px, calc(100vw - 2 * var(--s-4)));
+  padding: var(--s-4);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r);
+  box-shadow: var(--elev-2);
+  color: var(--text);
+  text-align: left;
+  animation: kpi-pop-in var(--dur) var(--ease);
+}
+
+/* Hangs from the tile's right edge when the left-aligned position would run
+   off the viewport, and opens upward when there is no room below. */
+.kpi-pop--flip {
+  left: auto;
+  right: 0;
+}
+
+.kpi-pop--above {
+  top: auto;
+  bottom: calc(100% + var(--s-2));
+  animation-name: kpi-pop-in-up;
+}
+
+@keyframes kpi-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes kpi-pop-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.kpi-pop__head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.kpi-pop__title {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.kpi-pop__label {
+  margin: 0;
+  font: var(--t-h3);
+  color: var(--text);
+}
+
+.kpi-pop__value {
+  font: var(--t-h1);
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.kpi-pop--accent .kpi-pop__value { color: var(--accent); }
+.kpi-pop--good .kpi-pop__value { color: var(--good); }
+.kpi-pop--warn .kpi-pop__value { color: var(--warn); }
+.kpi-pop--danger .kpi-pop__value { color: var(--danger); }
+.kpi-pop--neutral .kpi-pop__value { color: var(--text); }
+
+.kpi-pop__sub {
+  margin: var(--s-3) 0 0;
+  color: var(--text-2);
+  font: var(--t-body);
+}
+
+.kpi-pop__dir {
+  margin: var(--s-2) 0 0;
+  color: var(--muted);
+  font: var(--t-small);
+}
+
+.kpi-pop__dir strong {
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.kpi-pop__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-top: var(--s-4);
+}
+
+.kpi-pop__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap);
+  padding: var(--s-2) var(--s-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  color: var(--text);
+  font: var(--t-body-strong);
+  transition:
+    background var(--dur) var(--ease),
+    filter var(--dur) var(--ease);
+}
+
+.kpi-pop__btn:hover {
+  background: var(--surface2);
+}
+
+/* The question is the primary action, painted the way the Ask composer's
+   send button is, so it reads as the same door. */
+.kpi-pop__btn--ask {
+  background: var(--persona);
+  border-color: var(--persona);
+  color: var(--bg);
+}
+
+.kpi-pop__btn--ask:hover {
+  background: var(--persona);
+  filter: brightness(1.08);
+}
+
+/* ------------------------------------------------------------ responsive */
+
+/* Two tiles to a row on a phone: a popover the width of the row hangs
+   from whichever edge keeps it on screen, and the buttons stack. */
+@media (max-width: 720px) {
+  .kpi-pop {
+    min-width: 0;
+    width: calc(100vw - 2 * var(--s-4));
+  }
+  .kpi-pop__btn {
+    flex: 1 1 auto;
+  }
+}

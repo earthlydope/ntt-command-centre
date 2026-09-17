@@ -1,0 +1,10 @@
+web
+docs
+**/__pycache__
+**/*.pyc
+.venv
+venv
+.env
+*.log
+data/source/*.xlsx
+.access-disabled

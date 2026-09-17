@@ -1,0 +1,100 @@
+/* ==========================================================================
+   fab.css — the floating Ask AI Expert button (App.tsx).
+
+   The one way into the AI expert from every page, in the bottom-right corner
+   where a hand resting on a trackpad already is. It is the only Ask control
+   in the shell — the header pill was a second door to the same room and is
+   gone — so it is deliberately loud: persona-tinted, lifted, and labelled.
+   It hides while the panel it opens is up (App.tsx does that), so there is
+   never a button under the thing it summoned.
+
+   Stacking: above page content and the sticky rail (85), below the Ask
+   scrim/panel (80/90), the deal drawer (90) and the chart-ask overlay
+   (91–93), so an open overlay always covers it.
+
+   No colour literals: every colour resolves through a token in
+   theme/tokens.css. Loaded after app.css and density.css.
+   ========================================================================== */
+
+.fab {
+  position: fixed;
+  right: var(--s-5);
+  bottom: var(--s-5);
+  z-index: 70;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 52px;
+  padding: var(--s-3) var(--s-5) var(--s-3) var(--s-4);
+  border-radius: var(--r-pill);
+  background: var(--persona);
+  color: var(--on-accent);
+  font: var(--t-body-strong);
+  letter-spacing: 0.01em;
+  box-shadow: var(--elev-2), 0 0 0 1px rgba(var(--accent-rgb), 0.18);
+  transition:
+    transform var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease),
+    background var(--dur) var(--ease);
+}
+
+/* The three persona tints differ in lightness, but the theme already knows
+   which ink clears them: tokens.css sets --on-accent near-black on dark
+   (where every persona tint is light) and white on light (where every tint
+   is deepened). Nothing to special-case. */
+
+.fab:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--elev-2), 0 0 0 4px rgba(var(--accent-rgb), 0.22);
+}
+
+.fab:active {
+  transform: translateY(0);
+}
+
+.fab:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+.fab__glyph {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.fab__label {
+  white-space: nowrap;
+}
+
+/* The footer must never sit under the button: the page ends with enough
+   room for the button to float clear of the last line. */
+.main {
+  padding-bottom: calc(var(--s-7) + 52px);
+}
+
+/* On a phone the label costs more width than it earns; the spark alone is
+   the button, at the touch floor. */
+@media (max-width: 720px) {
+  .fab {
+    right: var(--s-4);
+    bottom: var(--s-4);
+    width: 52px;
+    min-height: 52px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
+  .fab__glyph {
+    width: 22px;
+    height: 22px;
+  }
+  .fab__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}

@@ -1,0 +1,236 @@
+/* ============================================================== tokens.css
+   THE ONLY FILE IN THE APP ALLOWED TO CONTAIN A LITERAL COLOUR.
+
+   Mirrors src/theme/palette.ts key for key. The palette exists twice because
+   the two consumers cannot share one representation: CSS cascades into the
+   shell, and the D3 modules are handed the object (they cannot read a custom
+   property — see the note at the top of palette.ts).
+
+   Dark is the default and is declared on bare :root as well as
+   [data-theme="dark"], so the toggle wins in both directions and a document
+   with no attribute still paints correctly.
+
+   Every translucent wash in the app is built with rgba(var(--*-rgb), a). That
+   is the entire reason the *-rgb tokens exist; nothing outside this file is
+   permitted to write a colour literal.
+
+   BRAND. NTT Blue is #007BC1 and lives in --brand, used for the brand rule and
+   the logo surround. It is deliberately NOT --accent on dark: #007BC1 measures
+   3.89:1 on the card colour, under the 4.5:1 that 12px interface text needs.
+   --accent is a tint of the same 202° hue that clears it.
+
+   RAG AND COLOUR-VISION DEFICIENCY. --good is teal (174°) and --danger is
+   red-orange (10°): 164° apart, separated in the blue channel as well as in
+   lightness, which is what survives deuteranopia. Contrast on the card colour —
+   dark: good 7.01, warn 8.23, danger 6.35, accent 5.77.
+   light: good 5.47, warn 5.02, danger 5.44, accent 5.79.
+   ========================================================================= */
+
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #0a0e1a;
+  --surface: #111827;
+  --surface2: #0e1522;
+  --line: #1e2a3f;
+  --line-strong: #2b3b56;
+
+  --brand: #007bc1;
+  --brand-rgb: 0, 123, 193;
+
+  --accent: #2e9bdb;
+  --accent-rgb: 46, 155, 219;
+  --accent-dim: #0f2a3f;
+
+  --warn: #e8a33d;
+  --warn-rgb: 232, 163, 61;
+
+  --danger: #f2765c;
+  --danger-rgb: 242, 118, 92;
+
+  --good: #1fb6a6;
+  --good-rgb: 31, 182, 166;
+
+  --muted: #8b96a8;
+  --muted-rgb: 139, 150, 168;
+
+  --text: #e7ecf3;
+  --text-2: #c7d0dc;
+
+  /* White on #2e9bdb is 3.08:1 — below 4.5:1 for the 12px labels that sit on
+     accent fills (active chips, filter pills, the segmented toggle, the avatar,
+     the Ask send button, saturated heat cells). The page's own near-black reads
+     6.26:1 on the same fill and is the standard knock-out for a bright accent
+     in a dark UI. Light keeps #fff (5.79:1 on #006aa8). */
+  --on-accent: #0a0e1a;
+  --accent-soft-text: #9ed0f2;
+  /* Pill text sits on a wash of its own hue, which lowers the base tone's
+     contrast. These lifted tints clear 5.5:1 on that wash without changing the
+     fills the wash is derived from. */
+  --accent-on-wash: #7cc2ef;
+  --danger-on-wash: #ff9a85;
+  --warn-on-wash: var(--warn);
+  --good-on-wash: #3fd3c2;
+
+  --track: #131c2e;
+
+  /* chart-only */
+  --chart-grid: #1e2a3f;
+  --chart-heat-low: #0f2a3f;
+  --chart-cell-stroke: #111827;
+
+  /* Alpha of the wash a .pill paints behind its OWN colour. Theme-dependent:
+     on paper a wash darkens the background under already-dark ink and eats the
+     contrast, so light needs a thinner one. */
+  --pill-wash: 0.14;
+
+  --scrim: rgba(5, 8, 16, 0.62);
+  --drawer-shadow: rgba(0, 0, 0, 0.55);
+  --focus-ring: #6fc3f0;
+
+  --elev-1: 0 1px 1px rgba(0, 0, 0, 0.3);
+  --elev-2: 0 16px 48px rgba(0, 0, 0, 0.55);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --bg: #f4f6fa;
+  --surface: #ffffff;
+  --surface2: #f9fafc;
+  --line: #dde3ec;
+  --line-strong: #c3cdda;
+
+  --brand: #007bc1;
+  --brand-rgb: 0, 123, 193;
+
+  --accent: #006aa8;
+  --accent-rgb: 0, 106, 168;
+  --accent-dim: #e3f0f9;
+
+  --warn: #b45309;
+  --warn-rgb: 180, 83, 9;
+
+  --danger: #c0392b;
+  --danger-rgb: 192, 57, 43;
+
+  --good: #0f766e;
+  --good-rgb: 15, 118, 110;
+
+  --muted: #55606f;
+  --muted-rgb: 85, 96, 111;
+
+  --text: #0e1726;
+  --text-2: #2c3849;
+
+  --on-accent: #fff;
+  --accent-soft-text: #006aa8;
+  /* Light's semantics are already dark enough to hold on their own thin wash,
+     so pill text is the tone itself. */
+  --accent-on-wash: var(--accent);
+  --danger-on-wash: var(--danger);
+  --warn-on-wash: var(--warn);
+  --good-on-wash: var(--good);
+
+  --track: #e6eaf1;
+
+  --chart-grid: #dde3ec;
+  /* NOT a near-white tint — an empty heat cell is not drawn at all, so too
+     pale a floor makes "low value" and "empty" indistinguishable. */
+  --chart-heat-low: #d6e7f4;
+  --chart-cell-stroke: #ffffff;
+
+  --pill-wash: 0.08;
+
+  --scrim: rgba(14, 23, 38, 0.34);
+  --drawer-shadow: rgba(14, 23, 38, 0.18);
+  --focus-ring: #006aa8;
+
+  --elev-1: 0 1px 2px rgba(14, 23, 38, 0.05);
+  --elev-2: 0 16px 48px rgba(14, 23, 38, 0.13);
+}
+
+/* ---------------------------------------------------------------- persona
+   Identity accent. The shell writes data-persona on <html>; these three rules
+   resolve --persona for the persona pill, the scope strip rule and the
+   action-card left border. It is NEVER used inside a chart, where hue is a
+   measure and a second meaning for the same channel would be a bug. */
+:root { --persona: var(--accent); }
+:root[data-persona="ae"] { --persona: #00a3a1; }
+:root[data-persona="manager"] { --persona: #e8a33d; }
+:root[data-persona="executive"] { --persona: #8a93f9; }
+
+:root[data-theme="light"][data-persona="ae"] { --persona: #00807e; }
+:root[data-theme="light"][data-persona="manager"] { --persona: #9a6a12; }
+:root[data-theme="light"][data-persona="executive"] { --persona: #4b54c4; }
+
+/* ------------------------------------------------------- type and metrics
+   Theme-independent, so they live outside the two blocks above. */
+:root {
+  --font: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue",
+    Arial, sans-serif;
+  /* Tabular figures everywhere a number can change: a KPI that reflows by a
+     pixel every time a digit changes reads as jitter. */
+  --font-num: "Inter", "SF Mono", "Segoe UI", system-ui, sans-serif;
+
+  /* Tighter tracking as size goes up, the way a system typeface is meant to be
+     set. Labels are sentence case at normal tracking — small caps with 0.085em
+     letter-spacing on every label is what made the old pages read as a console
+     rather than a product. */
+  --t-display: 680 32px/1.12 var(--font);
+  --t-h1: 660 22px/1.25 var(--font);
+  --t-h2: 620 17px/1.3 var(--font);
+  --t-h3: 600 14px/1.35 var(--font);
+  --t-body: 400 13.5px/1.6 var(--font);
+  --t-body-strong: 590 13.5px/1.6 var(--font);
+  --t-small: 400 12.5px/1.55 var(--font);
+  --t-micro: 560 11px/1.4 var(--font);
+  --t-kpi: 640 30px/1.05 var(--font-num);
+  --t-label: 520 12px/1.3 var(--font);
+  --label-track: 0;
+
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 22px;
+  --s-6: 30px;
+  --s-7: 44px;
+
+  --r-sm: 8px;
+  --r: 14px;
+  --r-lg: 20px;
+  --r-pill: 999px;
+
+  --dur-fast: 90ms;
+  --dur: 160ms;
+  --dur-slow: 260ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+/* Motion is a nicety; vestibular disorders are not. Everything that moves is
+   built on these two tokens so this one block can neutralise all of it. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur: 0ms;
+    --dur-slow: 0ms;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* One focus treatment for the whole app, including SVG marks — a chart mark is
+   a button and must look like one when tabbed to. */
+:where(a, button, [tabindex], [role="button"]):focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}

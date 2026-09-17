@@ -1,0 +1,726 @@
+/* ==========================================================================
+   chart-ask.css — the per-chart Ask panel (ChartAsk.tsx). Loaded after
+   app.css and density.css, so every rule here is the last word on what it
+   styles. No colour literals: every colour resolves through a token in
+   theme/tokens.css, and every translucent wash is rgba(var(--*-rgb), a).
+
+   THE PICTURE. The Ask button lives in a chart card's header. Pressing it
+   freezes the page under a blurred scrim, lifts that one card above the scrim
+   so it stays sharp, and opens the panel beside the card — to its right, level
+   with its top — so the chart and the answer are read together. When there is
+   no room to the right the card slides left over the blurred page and, if it
+   must, narrows; the geometry is measured in ChartAsk.tsx and arrives here as
+   four custom properties on the panel (--chart-ask-top/left/width/max-height)
+   and two on the card (--chart-ask-shift/shrink). Under 720px the panel is a
+   sheet along the bottom of the screen.
+
+   STACKING. The rest of the app stacks as: header 40, account menu 60, main
+   Ask scrim 80 and panel 90, rail drawer 85, D3 tooltip 95. This overlay goes
+   in between: scrim 91 covers everything the page draws, the lifted card at
+   92 sits on the scrim, the panel at 93 sits on the card. The tooltip keeps
+   95 on purpose — the lifted chart is still live, and hovering a mark must
+   still show its value above the panel rather than under the scrim.
+
+   A z-index on the card only escapes the scrim if no ancestor creates a
+   stacking context beneath it. The chain is .app > .shell > .body > .main >
+   .pv > .pv-charts > .pv-charts__cell > .card, and none of them sets a
+   transform, filter, opacity, contain, isolation or a positioned z-index,
+   which was checked rather than assumed. The grid cell is lifted anyway
+   (see "stacking" below): if a later stylesheet ever gives the cell a
+   stacking context, the cell carries the card up with it instead of
+   quietly trapping the card under the scrim.
+   ========================================================================== */
+
+/* The anchor ChartCard leaves in the card so the panel can find the card it
+   belongs to. It renders nothing of its own — the panel is portalled to the
+   body — so it must not become a flex item in the card's column and open a
+   gap between the header and the chart. */
+.chart-ask {
+  display: contents;
+}
+
+/* ------------------------------------------------------------- the trigger
+
+   A chart card's header is a plain block in app.css; a header that carries
+   an Ask becomes a row so the button sits at the top-right, level with the
+   title, and the title keeps the room to wrap. Scoped to headers that have
+   the button so a card without an Ask is untouched. */
+
+.card-head:has(> .chart-ask-button) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.card-head:has(> .chart-ask-button) > .card-head__text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* A pill, not a hover-only glyph: the feature is discoverable or it does not
+   exist. A wash of the accent behind accent-on-wash text is the app's own
+   quiet-but-present treatment for a pill, and it steps up rather than
+   changes character on hover and focus. */
+.chart-ask-button {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  background: rgba(var(--accent-rgb), var(--pill-wash));
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
+  border-radius: 50%;
+  color: var(--accent-on-wash);
+  transition:
+    background var(--dur) var(--ease),
+    border-color var(--dur) var(--ease),
+    color var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
+}
+
+.chart-ask-button:hover,
+.chart-ask-button:focus-visible {
+  background: rgba(var(--accent-rgb), calc(var(--pill-wash) * 2));
+  border-color: rgba(var(--accent-rgb), 0.6);
+  transform: scale(1.06);
+}
+
+/* While its panel is open the star reads as pressed, so the lifted card
+   itself says which control opened the panel beside it. */
+.chart-ask-button[aria-expanded="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.chart-ask-button__glyph {
+  width: var(--fs-icon);
+  height: var(--fs-icon);
+}
+
+/* ---------------------------------------------------------------- stacking */
+
+/* The grid cell around the lifted card. Today the cell has no stacking
+   context, so this rule changes nothing visible: the card's own z-index
+   already clears the scrim. It is here so that the day the cell gains one —
+   a transform for a drag handle, a contain for paint — the card does not
+   silently drop under the blur; the cell rises with it and the card keeps
+   its place inside the cell. Scoped by :has so every other cell is untouched. */
+.pv-charts__cell:has(> .chart-ask-host) {
+  position: relative;
+  z-index: 92;
+}
+
+.chart-ask__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 91;
+  background: var(--scrim);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  animation: chart-ask-fade var(--dur) var(--ease);
+}
+
+@keyframes chart-ask-fade {
+  from { opacity: 0; }
+}
+
+/* Every card learns to move so that the way BACK is animated too: by the
+   time the card returns to its column the host class is already gone, and a
+   transition declared only on the host class would let it snap. Nothing else
+   in the app changes a card's transform, so this is inert until an Ask opens.
+   Width is deliberately not in the list — a card narrows in one step so the
+   chart inside is redrawn once, not on every frame of a tween. */
+.card {
+  transition:
+    transform var(--dur) var(--ease),
+    border-color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+}
+
+/* The lifted card: above the scrim, sharp, and ringed in the accent so it is
+   unmistakably the chart the panel is about. --chart-ask-shift slides it left
+   and --chart-ask-shrink narrows it, both measured by the panel; with neither
+   set it is exactly where it was. */
+.card.chart-ask-host {
+  position: relative;
+  z-index: 92;
+  width: calc(100% - var(--chart-ask-shrink, 0px));
+  transform: translateX(calc(-1 * var(--chart-ask-shift, 0px)));
+  background: var(--surface);
+  border-color: rgba(var(--accent-rgb), 0.55);
+  box-shadow:
+    0 0 0 3px rgba(var(--accent-rgb), 0.35),
+    0 0 44px 6px rgba(var(--accent-rgb), 0.2),
+    var(--elev-2);
+}
+
+/* ------------------------------------------------------------------ panel */
+
+.chart-ask__panel {
+  position: fixed;
+  top: var(--chart-ask-top);
+  left: var(--chart-ask-left);
+  z-index: 93;
+  display: flex;
+  flex-direction: column;
+  width: var(--chart-ask-width);
+  max-height: var(--chart-ask-max-height);
+  min-height: min(var(--chart-ask-max-height), 360px);
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  box-shadow: var(--elev-2);
+  outline: none;
+  animation: chart-ask-in var(--dur) var(--ease);
+}
+
+/* The persona's hairline along the top, the same mark the persona pill and
+   the scope strip carry, so the panel is visibly this person's assistant. */
+.chart-ask__panel::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 3px;
+  background: var(--persona);
+}
+
+@keyframes chart-ask-in {
+  from {
+    transform: translateX(16px);
+    opacity: 0;
+  }
+}
+
+/* "side" and "over" share every rule above on purpose. The difference between
+   them is what the CARD did to make room, not what the panel looks like: in
+   both the panel is a fixed box at the measured top, left and width, beside a
+   sharp chart, over a blurred page. A panel that looked different depending on
+   which column its chart sat in would be a tell, not a design. */
+
+/* The sheet. Full width along the bottom, seven tenths of the screen, with
+   the card scrolled to the top of the screen above it. It ignores the
+   measured top, left and width on purpose: they were computed for a panel
+   beside a card, and this is not one. */
+.chart-ask__panel[data-place="sheet"] {
+  top: auto;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: auto;
+  height: 70vh;
+  max-height: 70vh;
+  min-height: 0;
+  border-bottom: 0;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  animation: chart-ask-up var(--dur) var(--ease);
+}
+
+@keyframes chart-ask-up {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+
+/* ------------------------------------------------------------------- head */
+
+.chart-ask__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  flex-shrink: 0;
+  padding: var(--s-4) var(--s-3) var(--s-3) var(--s-5);
+  border-bottom: 1px solid var(--line);
+}
+
+/* Spark and eyebrow on one line, the chart's title beneath them. */
+.chart-ask__heading {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: var(--s-2);
+  row-gap: 2px;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-top: var(--s-1);
+}
+
+.chart-ask__glyph {
+  width: var(--fs-icon-sm);
+  height: var(--fs-icon-sm);
+  color: var(--persona);
+}
+
+.chart-ask__eyebrow {
+  color: var(--muted);
+  font: var(--t-micro);
+}
+
+.chart-ask__title {
+  grid-column: 1 / -1;
+  font: var(--t-h2);
+  overflow-wrap: anywhere;
+}
+
+/* 40px square at least, and the touch floor where that is larger. */
+.chart-ask__close {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: max(40px, var(--tap));
+  height: max(40px, var(--tap));
+  border-radius: var(--r-sm);
+  color: var(--muted);
+  font-size: var(--fs-icon);
+  line-height: 1;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.chart-ask__close:hover,
+.chart-ask__close:focus-visible {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+/* ------------------------------------------------------------------- body */
+
+/* The one part of the panel that scrolls. The head, the compose row and the
+   footer are pinned; the thread grows between them. */
+.chart-ask__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--s-4) var(--s-5);
+}
+
+.chart-ask__suggest {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.chart-ask__suggest-label {
+  color: var(--muted);
+  font: var(--t-label);
+}
+
+.chart-ask__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+/* A long question must wrap inside its chip rather than push the row wider
+   than the panel; the list item is what the flex row sizes, so it is the
+   list item that has to be allowed to shrink. */
+.chart-ask__chips > li {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* A chip is the question and its glyph. The glyph is drawn in currentColor,
+   so the hover colour reaches it for free. */
+.chart-ask__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: var(--tap);
+  padding: var(--s-1) var(--s-3) var(--s-1) var(--s-2);
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  color: var(--text-2);
+  font: var(--t-small);
+  text-align: left;
+  transition:
+    background var(--dur) var(--ease),
+    border-color var(--dur) var(--ease),
+    color var(--dur) var(--ease);
+}
+
+.chart-ask__chip:hover,
+.chart-ask__chip:focus-visible {
+  background: rgba(var(--accent-rgb), var(--pill-wash));
+  border-color: var(--accent);
+  color: var(--accent-on-wash);
+}
+
+.chart-ask__chip-glyph {
+  width: var(--fs-icon-sm);
+  height: var(--fs-icon-sm);
+  flex-shrink: 0;
+}
+
+.chart-ask__chip-text {
+  min-width: 0;
+}
+
+.chart-ask__thread {
+  display: grid;
+  gap: var(--s-5);
+}
+
+.chart-ask__suggest + .chart-ask__thread {
+  margin-top: var(--s-5);
+}
+
+.chart-ask__intro {
+  display: grid;
+  gap: var(--s-2);
+  color: var(--text-2);
+  font: var(--t-body);
+}
+
+/* A reading measure, so the two lines of introduction do not run the full
+   width of a 520px panel. */
+.chart-ask__intro-body {
+  max-width: 56ch;
+}
+
+.chart-ask__turn {
+  display: grid;
+  gap: var(--s-3);
+}
+
+/* What was asked, marked in the persona's colour the way the main panel
+   marks its own questions, so a thread carried across reads the same. */
+.chart-ask__asked {
+  display: grid;
+  gap: 2px;
+  padding: var(--s-2) var(--s-4);
+  background: var(--surface2);
+  border-left: 2px solid var(--persona);
+  border-radius: var(--r-sm);
+}
+
+.chart-ask__asked-label {
+  color: var(--muted);
+  font: var(--t-micro);
+}
+
+.chart-ask__asked-text {
+  font: var(--t-body-strong);
+}
+
+/* --------------------------------------------------------------- skeleton
+
+   app.css paints the shimmer on anything whose class contains "-skel", which
+   catches every part of this skeleton, wrapper and caption included. The
+   lines keep it; the rest hands it back. */
+
+.chart-ask-skeleton,
+.chart-ask-skeleton__bars,
+.chart-ask-skeleton__caption {
+  background: none;
+  border-radius: 0;
+  animation: none;
+}
+
+.chart-ask-skeleton {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.chart-ask-skeleton__bars {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.chart-ask-skeleton__line {
+  height: 12px;
+}
+
+.chart-ask-skeleton__line--short {
+  width: 58%;
+}
+
+.chart-ask-skeleton__caption {
+  color: var(--muted);
+  font: var(--t-small);
+}
+
+/* ------------------------------------------------------------------ error
+
+   A question that did not get through is a transport failure, not a finding,
+   so it carries a thin danger edge and nothing else red. */
+
+.chart-ask-error {
+  padding: var(--s-3) var(--s-4);
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--danger);
+  border-radius: var(--r-sm);
+}
+
+.chart-ask-error__title {
+  font: var(--t-body-strong);
+}
+
+.chart-ask-error__detail {
+  margin-top: 2px;
+  color: var(--muted);
+  font: var(--t-small);
+}
+
+.chart-ask-error__retry {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  margin-top: var(--s-2);
+  padding: var(--s-1) var(--s-3);
+  border: 1px solid var(--accent);
+  border-radius: var(--r-sm);
+  color: var(--accent-on-wash);
+  font: var(--t-small);
+  font-weight: 600;
+}
+
+/* ----------------------------------------------------------------- answer
+
+   Headline first, then one row per sentence: a small lens label saying what
+   licenses the sentence — Answer, Why, Compared with, Change, Do next, Where
+   it stands — and the sentence beneath it with its bold runs. Stacked rather
+   than side by side because the panel can be 300px wide, and a label column
+   would take a third of it. */
+
+.chart-ask-answer {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.chart-ask-answer__headline {
+  font: var(--t-h3);
+  overflow-wrap: anywhere;
+}
+
+.chart-ask-answer__sentences {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.chart-ask-answer__sentence {
+  display: grid;
+  gap: 2px;
+  padding-left: var(--s-3);
+  border-left: 2px solid var(--line-strong);
+}
+
+.chart-ask-answer__lens {
+  color: var(--muted);
+  font: var(--t-micro);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: help;
+}
+
+/* The one prescriptive lens is the one the persona acts on, so it alone
+   carries the persona's colour. Every other lens stays quiet. */
+.chart-ask-answer__sentence:has(> .chart-ask-answer__lens[data-lens="action"]) {
+  border-left-color: var(--persona);
+}
+
+.chart-ask-answer__lens[data-lens="action"] {
+  color: var(--persona);
+}
+
+.chart-ask-answer__text {
+  color: var(--text-2);
+  font: var(--t-body);
+}
+
+.chart-ask-answer__text b {
+  color: var(--text);
+  font-weight: 620;
+}
+
+/* The answer's own chart is a normal ChartCard with a quieter frame: no lift,
+   no accent, smaller title, and the provenance line kept because it is the
+   proof the chart was chosen by the shape of the result. */
+.chart-ask-answer__chart {
+  margin-top: var(--s-1);
+}
+
+.chart-ask-answer__chart .card {
+  padding: var(--s-3) var(--s-4) var(--s-3);
+  background: var(--surface2);
+  border-color: var(--line);
+  border-radius: var(--r);
+}
+
+.chart-ask-answer__chart .card-head h3 {
+  font: var(--t-body-strong);
+}
+
+.chart-ask-answer__chart .chartwrap {
+  margin-top: var(--s-2);
+}
+
+.chart-ask-answer__why {
+  margin-top: var(--s-2);
+  color: var(--muted);
+  font: var(--t-small);
+}
+
+.chart-ask-answer__why-label {
+  margin-right: var(--s-2);
+  color: var(--text-2);
+  font: var(--t-micro);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* "Written from the computed figures this time" is information, not a
+   warning: the numbers are the same either way, so it is one quiet line. */
+.chart-ask-answer__quiet {
+  color: var(--muted);
+  font: var(--t-small);
+}
+
+/* Being declined is calm: a muted card that says so, with the server's
+   headline beneath it, and nothing red anywhere. */
+.chart-ask-answer--declined {
+  padding: var(--s-3) var(--s-4);
+  background: var(--surface2);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r);
+}
+
+.chart-ask-answer__declined {
+  color: var(--text);
+  font: var(--t-body-strong);
+}
+
+.chart-ask-answer--declined .chart-ask-answer__headline {
+  color: var(--muted);
+  font: var(--t-body);
+}
+
+/* ---------------------------------------------------------------- compose */
+
+.chart-ask__compose {
+  display: grid;
+  gap: var(--s-2);
+  flex-shrink: 0;
+  padding: var(--s-3) var(--s-5);
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+
+.chart-ask__compose-label:not(.pv-sr) {
+  color: var(--muted);
+  font: var(--t-label);
+}
+
+.chart-ask__field {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--s-2);
+}
+
+.chart-ask__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: calc(var(--tap) + var(--s-2));
+  max-height: 120px;
+  padding: var(--s-2) var(--s-3);
+  resize: none;
+  background: var(--surface2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font: var(--t-body);
+  transition: border-color var(--dur) var(--ease);
+}
+
+.chart-ask__input::placeholder {
+  color: var(--muted);
+}
+
+/* The app's one focus treatment covers links and buttons; a textarea has to
+   be told. */
+.chart-ask__input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+.chart-ask__send {
+  flex-shrink: 0;
+  min-height: var(--tap);
+  padding: var(--s-2) var(--s-4);
+  background: var(--accent);
+  border-radius: var(--r-sm);
+  color: var(--on-accent);
+  font: var(--t-body-strong);
+  transition: filter var(--dur) var(--ease), opacity var(--dur) var(--ease);
+}
+
+.chart-ask__send:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.chart-ask__send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chart-ask__hint {
+  color: var(--muted);
+  font-size: var(--fs-micro);
+}
+
+/* ------------------------------------------------------------------- foot */
+
+/* Always visible: the way into the main Ask panel, which keeps the longer
+   conversation. A text button in the persona's colour with the spark. */
+.chart-ask__foot {
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  padding: var(--s-2) var(--s-3) var(--s-2);
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+
+.chart-ask__expand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: var(--tap);
+  padding: var(--s-1) var(--s-3);
+  border-radius: var(--r-sm);
+  color: var(--persona);
+  font: var(--t-small);
+  font-weight: 600;
+  transition: background var(--dur) var(--ease);
+}
+
+.chart-ask__expand:hover,
+.chart-ask__expand:focus-visible {
+  background: var(--surface2);
+}
+
+.chart-ask__expand-glyph {
+  width: var(--fs-icon-sm);
+  height: var(--fs-icon-sm);
+  flex-shrink: 0;
+}
+
+/* ------------------------------------------------------------- narrow screens */
+
+@media (max-width: 720px) {
+  .chart-ask__head {
+    padding-left: var(--s-4);
+  }
+  .chart-ask__body,
+  .chart-ask__compose {
+    padding-left: var(--s-4);
+    padding-right: var(--s-4);
+  }
+}

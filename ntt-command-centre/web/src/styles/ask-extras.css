@@ -1,0 +1,599 @@
+/* ask-extras.css — additions to the main Ask panel (AskPanel.tsx). Loaded after app.css and density.css.
+   No colour literals: every colour resolves through a token in theme/tokens.css.
+
+   What this file changes about the panel, and why:
+
+   - The sheet is 520px wide, not 560: an answer is a headline, a few short
+     lines and a compact chart, and 40px less lets more of the page it is
+     answering about stay visible beside it.
+   - The header is one row with a 40px close in it, not a control floated over
+     the title. The transcript is the only thing that scrolls; the scope line
+     stays above it and the compose stays pinned below it.
+   - The suggested questions are chips with a glyph, tall enough to tap, and
+     they wrap. Once a question has been asked they fold under a toggle.
+   - An answer reads top to bottom as headline, sentences, chart, one quiet
+     disclosure. The lens is a small word above each sentence, not a pill
+     beside it, so the sentence itself is the widest thing on the line.
+   - The computed template and a decline are both quiet: muted, never amber. */
+
+/* ---------------------------------------------------------------- the sheet */
+
+.ask-panel {
+  width: min(520px, 100vw);
+}
+
+.ask-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4) var(--s-3) var(--s-5);
+}
+
+.ask-panel__heading {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.ask-panel__glyph {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--persona);
+}
+
+/* The close sits in the header row rather than being positioned over it, so
+   the title never runs underneath a control. 40px square is the floor here
+   whatever the pointer; the touch floor in density.css can only raise it. */
+.ask-panel__close {
+  position: static;
+  flex: none;
+  width: max(40px, var(--tap));
+  height: max(40px, var(--tap));
+  font-size: var(--fs-icon);
+  line-height: 1;
+}
+
+/* ------------------------------------------------------------------- scope */
+
+.ask-panel__scope {
+  padding: var(--s-2) var(--s-5);
+  border-bottom: 1px solid var(--line);
+}
+
+/* One compact line: the label, the scope in words, the pinned date. */
+.ask-panel__scope-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-1) var(--s-2);
+  padding: var(--s-1) 0;
+}
+
+.ask-panel__scope-meta {
+  color: var(--muted);
+}
+
+.ask-panel__scope-meta time {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+}
+
+.ask-panel__scope-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: var(--tap);
+  color: var(--muted);
+  font: var(--t-small);
+  cursor: pointer;
+  list-style: none;
+}
+
+.ask-panel__scope-summary::-webkit-details-marker {
+  display: none;
+}
+
+.ask-panel__scope-summary:hover {
+  color: var(--text);
+}
+
+/* A caret drawn from two borders, so it takes the text colour and needs no
+   glyph font. It turns when the disclosure is open. */
+.ask-panel__scope-caret,
+.ask-suggest__toggle-caret {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-left: 2px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform var(--dur) var(--ease);
+}
+
+.ask-panel__scope-details[open] > .ask-panel__scope-summary .ask-panel__scope-caret,
+.ask-suggest__toggle[aria-expanded="true"] .ask-suggest__toggle-caret {
+  transform: rotate(45deg);
+}
+
+.ask-panel__scope-body {
+  display: grid;
+  gap: var(--s-2);
+  margin-bottom: var(--s-2);
+  padding: var(--s-3);
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+}
+
+.ask-panel__scope-note {
+  color: var(--text-2);
+  font: var(--t-small);
+}
+
+.ask-panel__predicate {
+  display: block;
+  overflow-x: auto;
+  color: var(--text-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--fs-micro);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* --------------------------------------------------------- the transcript */
+
+/* The body is the one scroller. Its children stack; the transcript's own
+   margin from app.css is dropped because the gap does that work now. */
+.ask-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+  padding: var(--s-4) var(--s-5) var(--s-5);
+  overscroll-behavior: contain;
+}
+
+.ask-transcript {
+  margin-top: 0;
+}
+
+/* The transcript stays on the dialog's own theme, so the answer's chart card
+   is separated from the panel by a line rather than by a contrasting fill. */
+.ask-turn {
+  min-width: 0;
+}
+
+.ask-turn__about {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-bottom: var(--s-2);
+  color: var(--muted);
+  font: var(--t-small);
+}
+
+.ask-turn__about-glyph {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--persona);
+}
+
+.ask-turn__about-title {
+  color: var(--text-2);
+  font-weight: 590;
+}
+
+.ask-turn__question {
+  display: grid;
+  gap: var(--s-1);
+}
+
+/* --------------------------------------------------------- the empty state */
+
+/* Three short sentences, read left to right like the rest of the panel,
+   rather than a dashed box asking to be filled. */
+.ask-empty {
+  padding: var(--s-4) 0 0;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+
+.ask-empty__title {
+  margin-bottom: var(--s-2);
+  font: var(--t-h2);
+}
+
+.ask-empty__body {
+  color: var(--text-2);
+  font: var(--t-body);
+  font-size: var(--fs-body);
+}
+
+/* ---------------------------------------------------------- suggestions */
+
+.ask-suggest__label {
+  display: flex;
+  align-items: center;
+  min-height: var(--s-5);
+  color: var(--muted);
+  font: var(--t-label);
+}
+
+/* The fold. It is a real button so it can be controlled after a chip is
+   picked; the caret turns to say which way it is. */
+.ask-suggest__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: var(--tap);
+  padding: 0 var(--s-2) 0 0;
+  color: var(--muted);
+  font: var(--t-label);
+}
+
+.ask-suggest__toggle:hover {
+  color: var(--text);
+}
+
+.ask-suggest__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin: var(--s-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ask-suggest__list li {
+  max-width: 100%;
+}
+
+/* A chip is a glyph and a question, left-aligned and allowed to wrap onto a
+   second line rather than being clipped or spilling past the panel. 40px is
+   its floor, whatever the pointer. */
+.ask-suggest__chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--s-2);
+  max-width: 100%;
+  min-height: max(40px, var(--tap));
+  padding: var(--s-2) var(--s-4) var(--s-2) var(--s-3);
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  color: var(--text-2);
+  font: var(--t-small);
+  font-size: var(--fs-small);
+  line-height: 1.35;
+  text-align: left;
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease),
+    background-color var(--dur-fast) var(--ease);
+}
+
+.ask-suggest__chip:hover {
+  background: rgba(var(--muted-rgb), 0.1);
+  border-color: var(--persona);
+  color: var(--text);
+}
+
+.ask-suggest__glyph {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--persona);
+}
+
+.ask-suggest__text {
+  min-width: 0;
+}
+
+/* ---------------------------------------------------------------- answer */
+
+.ask-answer {
+  min-width: 0;
+}
+
+.ask-answer__headline {
+  margin: var(--s-4) 0 var(--s-3);
+  font: var(--t-h2);
+  color: var(--text);
+}
+
+.ask-answer__plain,
+.ask-refusal__reason {
+  color: var(--text-2);
+  font: var(--t-body);
+  font-size: var(--fs-body);
+}
+
+.ask-answer__plain + .ask-answer__plain,
+.ask-refusal__reason + .ask-refusal__reason {
+  margin-top: var(--s-2);
+}
+
+.ask-sentences {
+  display: grid;
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ask-sentence {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* The lens is a small word above the sentence — "Why", "Compared with",
+   "What to do" — not a pill beside it. The pill from app.css is undone here:
+   no border, no padding, no margin, just the label in micro caps. */
+.ask-sentence__lens {
+  display: block;
+  width: fit-content;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: var(--muted);
+  font: var(--t-micro);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ask-sentence__text {
+  color: var(--text);
+  font: var(--t-body);
+  font-size: var(--fs-body);
+}
+
+.ask-sentence__text b {
+  color: var(--text);
+  font-weight: 650;
+}
+
+/* The chart is a compact card inside the answer: less padding, a smaller
+   radius, and no minimum height under the marks — the answer's chart is
+   240px and the wrapper should be exactly that. */
+.ask-chart {
+  margin-top: var(--s-4);
+}
+
+.ask-chart .card {
+  padding: var(--s-4);
+  border-radius: var(--r);
+}
+
+.ask-chart .chartwrap {
+  min-height: 0;
+}
+
+.ask-chart__why {
+  display: grid;
+  gap: 2px;
+  margin-top: var(--s-2);
+  color: var(--text-2);
+  font: var(--t-small);
+}
+
+.ask-chart__why-label {
+  color: var(--muted);
+  font: var(--t-micro);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* The computed template is information, not a warning: the figures are the
+   same either way, so the note is muted and never amber. */
+.ask-answer__quiet {
+  margin-top: var(--s-3);
+  color: var(--muted);
+  font: var(--t-small);
+}
+
+/* A decline is a calm card on the panel's second surface — a statement, not a
+   failure — so it carries no warning colour and no badge. */
+.ask-answer--refused,
+.ask-answer--quiet {
+  margin-top: var(--s-3);
+  padding: var(--s-4);
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+}
+
+.ask-answer--refused .ask-answer__headline,
+.ask-answer--quiet .ask-answer__headline {
+  margin-top: 0;
+  color: var(--text-2);
+}
+
+.ask-answer--quiet .ask-error__retry {
+  margin-top: var(--s-3);
+}
+
+.ask-refusal__try {
+  margin-top: var(--s-3);
+}
+
+.ask-refusal__try .ask-suggest__chip {
+  background: var(--surface);
+}
+
+/* --------------------------------------------------------------- details */
+
+/* One quiet disclosure at the end of every answer. Closed it is one muted
+   line; open it holds the provenance tags, the plan and what was not said. */
+.ask-details {
+  margin-top: var(--s-4);
+}
+
+.ask-disclosure__aside {
+  margin-left: var(--s-2);
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.ask-details__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ask-details__tags + .ask-disclosure__note {
+  margin-top: var(--s-3);
+}
+
+.ask-details__section {
+  margin-top: var(--s-3);
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--line);
+}
+
+.ask-details__title {
+  margin: 0 0 var(--s-2);
+  color: var(--text-2);
+  font: var(--t-label);
+}
+
+/* The plan block from app.css keeps its top margin; the browser's own bottom
+   margin on <pre> is dropped so the disclosure ends where its content does. */
+.ask-details .ask-plan {
+  margin-bottom: 0;
+}
+
+.ask-provenance__group {
+  margin-top: var(--s-3);
+}
+
+.ask-provenance__title {
+  margin: 0 0 var(--s-1);
+  color: var(--muted);
+  font: var(--t-micro);
+  text-transform: uppercase;
+}
+
+.ask-provenance__list {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ask-provenance__item {
+  display: grid;
+  gap: 2px;
+}
+
+.ask-provenance__text {
+  color: var(--text-2);
+}
+
+.ask-provenance__reason {
+  color: var(--muted);
+  font-size: var(--fs-micro);
+}
+
+/* A disclosure's summary is a control and is tabbed to, but the app-wide focus
+   rule names anchors, buttons and tabindex — not summaries. The same ring. */
+.ask-panel__scope-summary:focus-visible,
+.ask-disclosure__summary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* -------------------------------------------------------------- skeleton */
+
+/* app.css paints the shimmer on anything whose class contains "-skel", which
+   catches every part of this skeleton — wrapper and caption included. The
+   bars keep it; the wrapper and the caption hand it back. */
+.ask-skeleton,
+.ask-skeleton__bars,
+.ask-skeleton__caption {
+  background: none;
+  border-radius: 0;
+  animation: none;
+}
+
+.ask-skeleton {
+  display: grid;
+  gap: var(--s-3);
+  margin-top: var(--s-4);
+}
+
+.ask-skeleton__caption {
+  color: var(--muted);
+  font: var(--t-small);
+}
+
+/* ---------------------------------------------------------------- compose */
+
+.ask-compose {
+  padding: var(--s-3) var(--s-5) var(--s-4);
+}
+
+.ask-compose__input {
+  min-height: max(44px, var(--tap));
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* The app's one focus treatment covers links and buttons; a textarea has to
+   be told. */
+.ask-compose__input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+  border-color: var(--persona);
+}
+
+/* The send is the persona's colour, like the avatar and the rule on every
+   action card; the text on it is the page ground, which is the knock-out the
+   persona fills already use. 40px is its floor; the touch floor can raise it. */
+.ask-compose__send {
+  min-height: max(40px, var(--tap));
+  padding: 0 var(--s-4);
+  background: var(--persona);
+  color: var(--bg);
+  font: var(--t-body-strong);
+  transition: filter var(--dur-fast) var(--ease);
+}
+
+.ask-compose__send:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+/* -------------------------------------------------------------- narrow */
+
+@media (max-width: 720px) {
+  /* A phone gets the whole screen: a sheet beside a sliver of page is a
+     sliver nobody can use, and the 520px rule above would otherwise outrank
+     app.css's own narrow rule, which this file loads after. */
+  .ask-panel {
+    width: 100vw;
+  }
+  .ask-panel__header,
+  .ask-panel__scope,
+  .ask-panel__body,
+  .ask-compose {
+    padding-left: var(--s-4);
+    padding-right: var(--s-4);
+  }
+  .ask-panel__header {
+    padding-right: var(--s-3);
+  }
+}

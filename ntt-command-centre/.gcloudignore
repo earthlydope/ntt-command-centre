@@ -1,0 +1,9 @@
+web/
+docs/
+**/__pycache__/
+**/*.pyc
+.venv/
+.env
+*.log
+data/source/*.xlsx
+.access-disabled

@@ -1,0 +1,71 @@
+/* tags.css — the base rule for every .pv-tag in the app, and its five tones.
+
+   WHY THIS FILE EXISTS. PageView's Tag primitive has always emitted
+   `pv-tag pv-tag--<tone>`, but nothing ever declared `.pv-tag` itself: the
+   tones were painted only where a specific block re-stated them (the rep
+   chips in reps.css). Everywhere else — "Critical" on a finding, "DS model"
+   on a card, "Upside" on a whitespace account — the tag rendered as bare
+   words with no wash, no border and no pill, which is what the customer saw
+   in the screenshot. One base rule here fixes every one of them at once.
+
+   The tones are the shared semantic set: good / warn / danger / accent, and
+   neutral for a label that is a fact rather than a verdict. Each paints the
+   *-on-wash text token over a thin wash of the same hue, so the word clears
+   contrast on its own fill in both themes (the wash alpha is --pill-wash,
+   which the token sheet thins on light because a wash darkens paper).
+
+   The rep chips carry `pv-tag` for the tone words but set their own size and
+   case (a chip is a sentence, not a label), so the base is scoped away from
+   them and their own rules in reps.css keep the last word.
+
+   Loaded from main.tsx after the component sheets. No colour literals. */
+
+.pv-tag:not(.pv-rep__chip) {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  min-height: 24px;
+  padding: 2px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--r-pill);
+  font: var(--t-micro);
+  font-size: var(--fs-micro, 11px);
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: var(--label-track);
+  vertical-align: middle;
+  /* A long tag ("the data-science closure model is not loaded") wraps inside
+     its pill rather than pushing a 375px column sideways. */
+  overflow-wrap: anywhere;
+}
+
+.pv-tag--neutral {
+  color: var(--muted);
+  background: rgba(var(--muted-rgb), var(--pill-wash));
+  border-color: rgba(var(--muted-rgb), 0.3);
+}
+
+.pv-tag--accent {
+  color: var(--accent-on-wash);
+  background: rgba(var(--accent-rgb), var(--pill-wash));
+  border-color: rgba(var(--accent-rgb), 0.35);
+}
+
+.pv-tag--good {
+  color: var(--good-on-wash);
+  background: rgba(var(--good-rgb), var(--pill-wash));
+  border-color: rgba(var(--good-rgb), 0.35);
+}
+
+.pv-tag--warn {
+  color: var(--warn-on-wash);
+  background: rgba(var(--warn-rgb), var(--pill-wash));
+  border-color: rgba(var(--warn-rgb), 0.35);
+}
+
+.pv-tag--danger {
+  color: var(--danger-on-wash);
+  background: rgba(var(--danger-rgb), var(--pill-wash));
+  border-color: rgba(var(--danger-rgb), 0.35);
+}

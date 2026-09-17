@@ -1,0 +1,53 @@
+
+Cross-Sell & Upsell Opportunity Finder — Reference Guide
+Companion guide to the cross-sell opportunity export (Cross_Sell_Upsell_Opportunities)
+Executive Summary
+This guide explains the cross-sell and upsell opportunity engine built on top of the North America pipeline data. It is meant to be read alongside the accompanying export, which lists every specific account and recommended offering currently identified.
+The idea behind it is simple: accounts with a similar profile tend to buy a recognizable bundle of offerings together. When an account is missing a piece of that bundle that accounts like it typically have, that gap is a concrete, evidence-backed conversation to have with them — not a guess or a cold pitch.
+Rather than relying on a single technique, three independent, complementary methods are run side by side and then combined into one ranked list. Each method looks at the same question — “what is this account missing?” — through a different lens, and each is deliberately tuned to surface only its clearest, most obvious cases rather than every loosely-possible pattern.
+Every recommendation carries a plain-word Confidence rating — Very High, High, or Medium — reflecting how many independent methods agree and how strong the individual signal is, so account teams can prioritize where to start without needing to understand the statistics underneath.
+How to Use This Guide
+The table below describes each of the three detection methods. For each one:
+What It Looks At — the underlying pattern the method is built to find, in plain terms.
+Why It’s Convincing — the story an account team can tell using it, without needing to explain any statistics.
+The export lists every specific account/offering pair currently identified, along with the Confidence rating and a plain-English reason for each one — the highest-confidence rows are the best starting point for account conversations or a demo.
+The Three Methods
+Method
+	What It Looks At
+	Why It’s Convincing
+	
+Market Basket Rule
+Association pattern mining
+	Looks across all accounts for products that are frequently bought together — the same idea retailers use for product placement (“customers who buy X also buy Y”). When an account has one half of a well-established pairing but not the other, the missing half is flagged.
+	If accounts with Product A go on to also have Product B far more often than random chance would suggest, and that pattern holds up across a meaningful number of accounts, an account with A but not B is a natural, well-precedented next conversation.
+	
+Peer/Industry Bundle
+Industry norm comparison
+	Groups accounts by industry and identifies the “standard kit” — the set of offerings a clear majority of accounts in that industry already have. Any account missing a piece of its own industry's standard kit is flagged.
+	“Most other accounts in your industry already have this” is a simple, low-risk pitch — it doesn't require explaining a statistical rule, just that this account is behind where its peers already are.
+	
+Similar Account (“Customers Like You”)
+Purchase-similarity matching
+	Measures how closely every account's actual buying footprint resembles every other account's, based on everything each has purchased — regardless of industry label — and checks what an account's closest-matching peers have that it doesn't.
+	When several genuinely similar accounts, not just one, independently share the same missing offering, it's a concrete, named-peer story: “accounts that buy just like you also have this.”
+	
+Reading the Confidence Rating
+Each recommendation in the export carries one of three Confidence ratings, based on how many of the three methods above found it and how strong the individual signal was:
+Confidence
+	What It Means
+	
+Very High
+	More than one of the three independent methods pointed to the same account and the same offering. Three different lenses on the data agreeing independently is the strongest signal this engine can produce.
+	
+High
+	Found by only one method, but it stood out as an especially strong example among that method's own findings — not just a borderline case that cleared the bar.
+	
+Medium
+	Found by only one method, meeting that method's own bar for a credible recommendation without standing out further. Still a real, evidence-backed opportunity — the most conservative of the three tiers.
+	
+Additional Notes
+A short, high-confidence list by design: Each method applies a deliberately strict bar for what counts as a genuine pattern, so the export favors a shorter list of well-evidenced opportunities over a long list of speculative ones.
+These are opportunities, not risks: Every row here represents upside — a specific, plausible way to grow an existing account — and should be presented to leadership and account teams that way.
+A recommendation is a starting point, not a guaranteed sale: Each flagged pairing is designed to prompt a specific, well-informed conversation with the account team, not to predict that the account will actually buy.
+A note on this dataset specifically: Because the underlying data here is synthetic, some of the specific accounts and offerings surfaced in this run are illustrations of the engine working end to end rather than real findings about NTT's customer base. The same methods, run against real Salesforce history, would surface genuine, replicable opportunities.
+This is a living reference and will be refined once the same methods are run against real Salesforce transaction history.

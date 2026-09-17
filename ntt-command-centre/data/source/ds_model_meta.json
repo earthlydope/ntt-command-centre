@@ -1,0 +1,183 @@
+{
+ "source": "NA_SFDC_Deal_Closure_Model_v2_SHAP_Benchmarks.xlsx",
+ "builtOn": "2026-09-15",
+ "author": "NTT data-science team (deal closure model v2)",
+ "algorithm": "Random Forest, isotonic-calibrated",
+ "split": "time-based \u2014 train on deals closed before 14 Jun 2026",
+ "population": {
+  "lines": 14872,
+  "closedTraining": 13204,
+  "openScored": 1668,
+  "winRate": 0.381
+ },
+ "testAuc": 0.5952,
+ "brierScore": 0.23,
+ "featureImportance": [
+  {
+   "feature": "stage_at_cutoff",
+   "giniImportance": 0.2858,
+   "meanAbsShap": 0.0515
+  },
+  {
+   "feature": "n_stage_changes",
+   "giniImportance": 0.144,
+   "meanAbsShap": 0.0285
+  },
+  {
+   "feature": "n_forecast_changes",
+   "giniImportance": 0.1173,
+   "meanAbsShap": 0.0166
+  },
+  {
+   "feature": "revenue_at_cutoff",
+   "giniImportance": 0.0929,
+   "meanAbsShap": 0.0094
+  },
+  {
+   "feature": "gm_pct_at_cutoff",
+   "giniImportance": 0.0633,
+   "meanAbsShap": 0.0123
+  },
+  {
+   "feature": "confidence_at_cutoff",
+   "giniImportance": 0.062,
+   "meanAbsShap": 0.0057
+  },
+  {
+   "feature": "forecast_at_cutoff",
+   "giniImportance": 0.0536,
+   "meanAbsShap": 0.0088
+  },
+  {
+   "feature": "owner_historical_win_rate",
+   "giniImportance": 0.0482,
+   "meanAbsShap": 0.0026
+  },
+  {
+   "feature": "avg_days_completed_stage",
+   "giniImportance": 0.0479,
+   "meanAbsShap": 0.0035
+  },
+  {
+   "feature": "deal_age_at_cutoff_days",
+   "giniImportance": 0.0379,
+   "meanAbsShap": 0.0027
+  },
+  {
+   "feature": "n_revenue_revisions",
+   "giniImportance": 0.0241,
+   "meanAbsShap": 0.005
+  },
+  {
+   "feature": "AccountIndustry",
+   "giniImportance": 0.0229,
+   "meanAbsShap": 0.0024
+  }
+ ],
+ "featureCorrelation": [
+  {
+   "feature": "n_stage_changes",
+   "correlation": 0.1888
+  },
+  {
+   "feature": "n_forecast_changes",
+   "correlation": 0.1647
+  },
+  {
+   "feature": "confidence_at_cutoff",
+   "correlation": 0.1246
+  },
+  {
+   "feature": "n_revenue_revisions",
+   "correlation": 0.0866
+  },
+  {
+   "feature": "has_contract_term",
+   "correlation": 0.0087
+  },
+  {
+   "feature": "deal_age_at_cutoff_days",
+   "correlation": 0.0053
+  },
+  {
+   "feature": "owner_historical_win_rate",
+   "correlation": 0.0018
+  },
+  {
+   "feature": "revenue_at_cutoff",
+   "correlation": -0.0094
+  },
+  {
+   "feature": "gm_pct_at_cutoff",
+   "correlation": -0.0149
+  },
+  {
+   "feature": "avg_days_completed_stage",
+   "correlation": -0.0422
+  }
+ ],
+ "winRateByStageAtCutoff": [
+  {
+   "stage": "Proposal Evaluation",
+   "winRate": 0.1469,
+   "n": 524
+  },
+  {
+   "stage": "Qualification",
+   "winRate": 0.1561,
+   "n": 519
+  },
+  {
+   "stage": "Requirements Definition",
+   "winRate": 0.1578,
+   "n": 507
+  },
+  {
+   "stage": "Proposal",
+   "winRate": 0.1584,
+   "n": 486
+  },
+  {
+   "stage": "Identification",
+   "winRate": 0.2023,
+   "n": 702
+  },
+  {
+   "stage": "Finalist",
+   "winRate": 0.4368,
+   "n": 10466
+  }
+ ],
+ "winRateByForecastAtCutoff": [
+  {
+   "forecastCategory": "Pipeline",
+   "winRate": 0.166,
+   "n": 795
+  },
+  {
+   "forecastCategory": "Omitted",
+   "winRate": 0.2839,
+   "n": 2110
+  },
+  {
+   "forecastCategory": "Not Set",
+   "winRate": 0.401,
+   "n": 192
+  },
+  {
+   "forecastCategory": "Best Case",
+   "winRate": 0.4085,
+   "n": 2962
+  },
+  {
+   "forecastCategory": "Commit",
+   "winRate": 0.4214,
+   "n": 7145
+  }
+ ],
+ "coverageInThisBook": {
+  "lines": 3034,
+  "openLines": 350,
+  "openOpportunities": 235
+ }
+}

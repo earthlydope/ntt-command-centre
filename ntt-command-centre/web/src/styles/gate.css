@@ -1,0 +1,206 @@
+/* ==========================================================================
+   gate.css — the password on the door (components/Gate.tsx).
+
+   One centred card on the page ground, nothing else on screen: the gate is
+   rendered INSTEAD of the app, so there is no shell to match and nothing
+   behind it to scrim. It borrows the app's field and button shapes (the
+   Ask input, the Ask send) so the first thing the customer sees is already
+   the product's own language.
+
+   Two hit targets — the reveal toggle and Enter — are held to --tap; the
+   field itself is the same height. The wrong-password shake runs on
+   --dur-slow, so the reduced-motion block in tokens.css neutralises it
+   with everything else.
+
+   No colour literals: every colour resolves through a token in
+   theme/tokens.css, in both themes. Loaded after app.css and density.css.
+   ========================================================================== */
+
+.gate {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: var(--s-5) var(--s-4);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.gate__card {
+  display: grid;
+  gap: var(--s-3);
+  width: min(100%, 400px);
+  padding: var(--s-6) var(--s-5) var(--s-5);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  /* The brand rule the header carries, so the mark sits on its own colour. */
+  border-top: 3px solid var(--brand);
+  border-radius: var(--r-lg);
+  box-shadow: var(--elev-2);
+}
+
+/* ------------------------------------------------------------------ brand */
+
+.gate__brand {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  margin-bottom: var(--s-1);
+}
+
+.gate__logo {
+  display: block;
+  height: 34px;
+  width: auto;
+  flex-shrink: 0;
+}
+
+.gate__name {
+  margin: 0;
+  font: var(--t-h2);
+  color: var(--text);
+}
+
+.gate__lede {
+  margin: 0 0 var(--s-2);
+  color: var(--muted);
+  font: var(--t-body);
+}
+
+/* ------------------------------------------------------------------ field */
+
+.gate__label {
+  font: var(--t-label);
+  letter-spacing: var(--label-track);
+  color: var(--text-2);
+}
+
+.gate__field {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: var(--tap);
+  padding-left: var(--s-3);
+  padding-right: var(--s-1);
+  background: var(--surface2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  transition: border-color var(--dur) var(--ease);
+}
+
+/* The app's one focus treatment covers links and buttons; an input inside a
+   composite field has to be told, and the ring belongs on the whole field so
+   the reveal toggle reads as part of it. */
+.gate__field:focus-within {
+  border-color: var(--accent);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.gate__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: var(--tap);
+  padding: var(--s-2) 0;
+  background: none;
+  border: 0;
+  color: var(--text);
+  font: var(--t-body);
+  letter-spacing: 0.04em;
+}
+
+.gate__input:focus {
+  outline: none;
+}
+
+.gate__input::placeholder {
+  color: var(--muted);
+}
+
+.gate__reveal {
+  flex-shrink: 0;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  padding-inline: var(--s-2);
+  border-radius: var(--r-sm);
+  color: var(--muted);
+  font: var(--t-micro);
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.gate__reveal:hover {
+  background: rgba(var(--muted-rgb), 0.12);
+  color: var(--text);
+}
+
+.gate__reveal[aria-pressed="true"] {
+  color: var(--accent-soft-text);
+}
+
+/* ------------------------------------------------------------------ wrong */
+
+.gate__field--wrong {
+  border-color: var(--danger);
+  animation: gate-shake var(--dur-slow) var(--ease);
+}
+
+@keyframes gate-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-5px);
+  }
+  40%,
+  80% {
+    transform: translateX(5px);
+  }
+}
+
+/* The slot keeps one line of height whether or not there is a message, so
+   the button below does not move when the answer is "wrong". */
+.gate__error {
+  margin: 0;
+  min-height: 1.55em;
+  color: var(--danger-on-wash);
+  font: var(--t-small);
+}
+
+/* ------------------------------------------------------------------ enter */
+
+.gate__enter {
+  min-height: var(--tap);
+  padding: var(--s-2) var(--s-4);
+  background: var(--accent);
+  border-radius: var(--r-sm);
+  color: var(--on-accent);
+  font: var(--t-body-strong);
+  transition: filter var(--dur) var(--ease), opacity var(--dur) var(--ease);
+}
+
+.gate__enter:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.gate__enter:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.gate__note {
+  margin: var(--s-2) 0 0;
+  color: var(--muted);
+  font: var(--t-micro);
+  font-weight: 400;
+}
+
+/* A phone: the card takes the width the ground leaves it and the mark and
+   name stack when they must. Checked at 375px. */
+@media (max-width: 420px) {
+  .gate__card {
+    padding: var(--s-5) var(--s-4) var(--s-4);
+  }
+}

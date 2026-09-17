@@ -1,0 +1,9 @@
+# The semantic layer's runtime. Pinned to the versions the build was verified
+# against locally (see README "Deployment"); loosen only after re-running
+# `python -m api.scripts.verify`, because pandas 3 changed groupby defaults.
+fastapi==0.141.1
+uvicorn[standard]==0.53.0
+pandas==3.0.5
+numpy==2.5.3
+scikit-learn==1.9.1
+anthropic==1.6.0

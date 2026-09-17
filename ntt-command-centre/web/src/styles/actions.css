@@ -1,0 +1,967 @@
+/* actions.css — the action rail ("Do these next"): components/ActionRail.tsx.
+   Loaded after app.css, density.css and reps.css, so it is the last word on
+   everything it styles.
+
+   No colour literals: every colour resolves through a token in theme/tokens.css,
+   so both themes come for free. The persona accent is var(--persona) and is used
+   for exactly one thing here — the left rule of the AI explanation, which is the
+   product's voice rather than a measure.
+
+   One custom property carries the card's tone through everything that has to
+   agree on it: the card's left edge, the rank circle, the urgency pill, the
+   bullet dots, the quote rule and the panel's top edge all read --arail-tone,
+   which the tone modifier sets once. A risk card's tone is its urgency; an
+   opportunity card's tone is --good regardless, because upside must never
+   arrive in the colour of a fire drill. */
+
+.arail {
+  margin-top: var(--s-5);
+}
+
+/* ------------------------------------------------------------ head strip
+   Title and count on the left, the note under them, the controls to the
+   right on the same rows. Below 900px the three stack. */
+.arail-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "lead controls"
+    "note controls";
+  align-items: center;
+  column-gap: var(--s-4);
+  row-gap: var(--s-1);
+  margin-bottom: var(--s-4);
+}
+
+.arail-head__lead {
+  grid-area: lead;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-3);
+  min-width: 0;
+}
+
+.arail-head__title {
+  font: var(--t-h2);
+}
+
+.arail-head__count {
+  padding: 1px 9px;
+  border-radius: var(--r-pill);
+  background: rgba(var(--accent-rgb), var(--pill-wash));
+  color: var(--accent-on-wash);
+  font: var(--t-micro);
+  font-variant-numeric: tabular-nums;
+}
+
+.arail-head__asof,
+.arail-head__note {
+  color: var(--muted);
+  font: var(--t-small);
+  font-size: var(--fs-small, 12.5px);
+}
+
+.arail-head__note {
+  grid-area: note;
+  min-width: 0;
+}
+
+.arail-head__controls {
+  grid-area: controls;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--s-2);
+}
+
+@media (max-width: 899px) {
+  .arail-head {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "lead"
+      "note"
+      "controls";
+  }
+  .arail-head__controls {
+    justify-content: flex-start;
+    margin-top: var(--s-2);
+  }
+}
+
+/* --------------------------------------------------------- segmented control
+   Each segment is a real button at the tap floor, so the strip is a little
+   taller than the shell's own toggle but never smaller than a finger. */
+.arail-seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px;
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+}
+
+.arail-seg__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--tap, 36px);
+  padding: 0 12px;
+  border-radius: var(--r-pill);
+  color: var(--muted);
+  font: var(--t-micro);
+  font-size: var(--fs-micro, 11px);
+  white-space: nowrap;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.arail-seg__btn:hover:not(:disabled):not([aria-pressed="true"]) {
+  background: rgba(var(--muted-rgb), 0.12);
+  color: var(--text);
+}
+
+.arail-seg__btn[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.arail-seg__btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* The live count. Inverted on the active segment so it stays legible on the
+   accent fill: the fill's own knock-out colour behind the accent's digits. */
+.arail-seg__n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--r-pill);
+  background: rgba(var(--muted-rgb), 0.18);
+  font-variant-numeric: tabular-nums;
+  font-size: 10.5px;
+  line-height: 1;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.arail-seg__btn[aria-pressed="true"] .arail-seg__n {
+  background: var(--on-accent);
+  color: var(--accent);
+}
+
+/* ------------------------------------------------------------------- grid
+   Three columns wide, two at 900, one below. minmax(0, 1fr) so a long label
+   cannot push a column wider than its share; stretch so every card in a row
+   is the height of the tallest, which — with the headline reserved at two
+   lines — is the same height. */
+.arail-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s-3);
+  align-items: stretch;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 900px) {
+  .arail-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .arail-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* ------------------------------------------------------------------- tone */
+.arail-card,
+.arail-detail {
+  --arail-tone: var(--muted);
+  --arail-tone-rgb: var(--muted-rgb);
+  --arail-tone-text: var(--text-2);
+}
+
+.arail-card--danger,
+.arail-detail--danger {
+  --arail-tone: var(--danger);
+  --arail-tone-rgb: var(--danger-rgb);
+  --arail-tone-text: var(--danger-on-wash);
+}
+
+.arail-card--warn,
+.arail-detail--warn {
+  --arail-tone: var(--warn);
+  --arail-tone-rgb: var(--warn-rgb);
+  --arail-tone-text: var(--warn-on-wash);
+}
+
+.arail-card--accent,
+.arail-detail--accent {
+  --arail-tone: var(--accent);
+  --arail-tone-rgb: var(--accent-rgb);
+  --arail-tone-text: var(--accent-on-wash);
+}
+
+.arail-card--good,
+.arail-detail--good {
+  --arail-tone: var(--good);
+  --arail-tone-rgb: var(--good-rgb);
+  --arail-tone-text: var(--good-on-wash);
+}
+
+/* ------------------------------------------------------------------- card */
+.arail-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  min-width: 0;
+  padding: var(--s-3) var(--s-4);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--arail-tone);
+  border-radius: var(--r);
+  cursor: pointer;
+  /* transform is the FLIP channel: the component sets an inverse translate
+     inline and clears it, and this transition carries the card home. */
+  transition:
+    transform var(--dur-slow) var(--ease),
+    border-color var(--dur) var(--ease),
+    background-color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+  animation: arail-in var(--dur-slow) var(--ease) backwards;
+  animation-delay: calc(var(--i, 0) * var(--dur-fast) * 0.4);
+}
+
+/* Cross-sell is upside and must never arrive in a red card. The wash is a
+   tint of --good, faint enough to read as "different kind of card" and not
+   as a status. */
+.arail-card--opportunity {
+  background: linear-gradient(180deg, rgba(var(--good-rgb), 0.07), rgba(var(--good-rgb), 0.02)),
+    var(--surface);
+}
+
+.arail-card:hover {
+  border-top-color: var(--line-strong);
+  border-right-color: var(--line-strong);
+  border-bottom-color: var(--line-strong);
+  box-shadow: var(--elev-1);
+}
+
+.arail-card.is-open {
+  border-color: rgba(var(--arail-tone-rgb), 0.55);
+  border-left-color: var(--arail-tone);
+  box-shadow: 0 0 0 1px rgba(var(--arail-tone-rgb), 0.25);
+}
+
+/* The pointer from the open card to its panel in the row below. */
+.arail-card.is-open::after {
+  content: "";
+  position: absolute;
+  left: 28px;
+  bottom: -9px;
+  border: 8px solid transparent;
+  border-bottom: 0;
+  border-top-color: var(--arail-tone);
+}
+
+@keyframes arail-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* top strip: rank · entity · urgency */
+.arail-card__top {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.arail-card__rank {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(var(--arail-tone-rgb), 0.16);
+  color: var(--arail-tone-text);
+  font: var(--t-micro);
+  font-variant-numeric: tabular-nums;
+}
+
+.arail-card__entity {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.arail-card__entity-type {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font: var(--t-micro);
+  font-size: var(--fs-micro, 11px);
+}
+
+.arail-card__entity-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-2);
+  font: var(--t-small);
+  font-size: var(--fs-small, 12.5px);
+  font-weight: 600;
+}
+
+/* The urgency pill: its own coloured left edge on a wash of the same tone. */
+.arail-pill {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px 2px 7px;
+  border-left: 3px solid var(--arail-tone);
+  border-radius: 4px;
+  background: rgba(var(--arail-tone-rgb), var(--pill-wash));
+  color: var(--arail-tone-text);
+  font: var(--t-micro);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Two lines, and two lines reserved, so a one-line headline does not make
+   its card shorter than its neighbours. */
+.arail-card__headline {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  min-height: calc(2 * 1.35em);
+  margin: 0;
+  font: var(--t-h3);
+  font-size: var(--fs-h3, 14px);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+/* foot: the one big number · owner · details */
+.arail-card__foot {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--s-3);
+  min-width: 0;
+  margin-top: auto;
+}
+
+.arail-card__value {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.arail-card__value-num {
+  font: var(--t-h2);
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.arail-card__value-label,
+.arail-detail__value-label {
+  color: var(--muted);
+  font: var(--t-micro);
+  font-size: var(--fs-micro, 11px);
+}
+
+.arail-card__owner {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-bottom: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font: var(--t-small);
+  font-size: var(--fs-small, 12.5px);
+}
+
+/* A tap-floor button whose negative margins keep the foot to one text line:
+   the card's own padding absorbs the overhang. */
+.arail-card__more {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: var(--tap, 36px);
+  margin: -6px -8px -6px 0;
+  padding: 0 10px 0 12px;
+  border-radius: var(--r-pill);
+  color: var(--text-2);
+  font: var(--t-small);
+  font-size: var(--fs-small, 12.5px);
+  font-weight: 590;
+  white-space: nowrap;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.arail-card:hover .arail-card__more,
+.arail-card__more:hover {
+  background: rgba(var(--accent-rgb), 0.14);
+  color: var(--accent-on-wash);
+}
+
+.arail-card__chev {
+  width: 12px;
+  height: 12px;
+  transition: transform var(--dur) var(--ease);
+}
+
+.arail-card.is-open .arail-card__chev {
+  transform: rotate(180deg);
+}
+
+/* ----------------------------------------------------------------- panel
+   A full-width grid row. Its height is the 0fr → 1fr transition on the
+   row track; the clip's min-height: 0 is what lets a fr track collapse. */
+.arail-detail {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows var(--dur-slow) var(--ease),
+    opacity var(--dur-slow) var(--ease),
+    transform var(--dur-slow) var(--ease);
+}
+
+.arail-detail--open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.arail-detail--closing {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+
+.arail-detail__clip {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.arail-detail__panel {
+  padding: var(--s-4) var(--s-5) var(--s-5);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--arail-tone);
+  border-radius: var(--r);
+}
+
+/* The clip would cut a ring drawn outside the box, so this one sits inside. */
+.arail-detail__panel:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+  border-radius: var(--r);
+}
+
+.arail-detail__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-3);
+  margin-bottom: var(--s-4);
+}
+
+.arail-detail__crumb {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font: var(--t-micro);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.arail-detail__value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font: var(--t-h3);
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.arail-detail__close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap, 36px);
+  height: var(--tap, 36px);
+  margin: -8px -10px -8px 0;
+  border-radius: 50%;
+  color: var(--muted);
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.arail-detail__close svg {
+  width: 12px;
+  height: 12px;
+}
+
+.arail-detail__close:hover {
+  background: rgba(var(--muted-rgb), 0.14);
+  color: var(--text);
+}
+
+/* Two columns: the evidence on the left, the verb on the right. The left
+   takes slightly more because the bullets are prose and the right is a quote
+   and three buttons. */
+.arail-detail__cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: var(--s-5);
+  align-items: start;
+}
+
+@media (max-width: 899px) {
+  .arail-detail__cols {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s-4);
+  }
+}
+
+.arail-detail__label {
+  margin: 0 0 var(--s-2);
+  color: var(--muted);
+  font: var(--t-micro);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.arail-why {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.arail-why__item {
+  position: relative;
+  padding-left: var(--s-3);
+  color: var(--text-2);
+  font: var(--t-small);
+  font-size: var(--fs-small, 12.5px);
+  line-height: 1.55;
+}
+
+.arail-why__item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.62em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--arail-tone);
+}
+
+.arail-why__none {
+  color: var(--muted);
+  font: var(--t-small);
+}
+
+.arail-rule {
+  display: grid;
+  gap: 4px;
+  margin: var(--s-4) 0 0;
+}
+
+.arail-rule .arail-detail__label {
+  margin: 0;
+}
+
+.arail-rule__code {
+  display: block;
+  padding: 6px 10px;
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 11.5px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* The next step is the point of the card, so it reads as a quotation. */
+.arail-next {
+  margin: 0;
+  padding: var(--s-3) var(--s-4);
+  background: var(--surface2);
+  border-left: 3px solid var(--arail-tone);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  color: var(--text);
+  font: var(--t-body-strong);
+  font-size: var(--fs-body, 13.5px);
+  line-height: 1.5;
+}
+
+.arail-detail__owner {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  margin: var(--s-2) 0 0;
+  color: var(--text-2);
+  font: var(--t-small);
+  font-size: var(--fs-small, 12.5px);
+}
+
+.arail-detail__owner .arail-detail__label {
+  margin: 0;
+}
+
+.arail-detail__btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+}
+
+/* -------------------------------------------------------------- buttons */
+.arail-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap, 36px);
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface2);
+  color: var(--text-2);
+  font: var(--t-small);
+  font-size: var(--fs-small, 12.5px);
+  font-weight: 590;
+  white-space: nowrap;
+  transition:
+    background var(--dur) var(--ease),
+    color var(--dur) var(--ease),
+    border-color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+}
+
+.arail-btn:hover:not(:disabled) {
+  background: rgba(var(--accent-rgb), 0.14);
+  border-color: rgba(var(--accent-rgb), 0.4);
+  color: var(--accent-on-wash);
+}
+
+.arail-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.arail-btn--primary:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.25);
+}
+
+.arail-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* ----------------------------------------------------------- explanation
+   An always-mounted aria-live region: it must exist before the answer arrives
+   so a screen reader announces it, but an EMPTY one must not paint a box. */
+.arail-explain:empty {
+  display: none;
+}
+
+.arail-explain:not(:empty) {
+  display: grid;
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  background: var(--surface2);
+  border-left: 2px solid var(--persona);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+}
+
+/* Three lines that breathe while the answer is being checked. */
+.arail-skel {
+  display: grid;
+  gap: 9px;
+  padding: 2px 0;
+}
+
+.arail-skel__line {
+  height: 10px;
+  border-radius: 5px;
+  background: rgba(var(--muted-rgb), 0.2);
+  animation: arail-pulse 1100ms ease-in-out infinite;
+}
+
+.arail-skel__line:nth-child(1) { width: 92%; }
+.arail-skel__line:nth-child(2) { width: 78%; animation-delay: 120ms; }
+.arail-skel__line:nth-child(3) { width: 58%; animation-delay: 240ms; }
+
+@keyframes arail-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+.arail-explain__headline {
+  font: var(--t-body-strong);
+  font-size: var(--fs-body, 13.5px);
+}
+
+.arail-explain__list {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Each sentence arrives a beat after the last — the answer reads as written
+   rather than dropped in. The delay is a --dur multiple, so reduced motion
+   zeroes it along with the animation. */
+.arail-explain__s {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: var(--s-2);
+  align-items: baseline;
+  animation: arail-in var(--dur-slow) var(--ease) backwards;
+  animation-delay: calc(var(--i, 0) * var(--dur-fast));
+}
+
+@media (max-width: 720px) {
+  .arail-explain__s {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}
+
+.arail-explain__lens {
+  color: var(--muted);
+  font: var(--t-micro);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.arail-explain__text {
+  color: var(--text-2);
+  font: var(--t-small);
+  font-size: var(--fs-small, 12.5px);
+  line-height: 1.55;
+}
+
+.arail-explain__text b {
+  color: var(--text);
+  font-weight: 650;
+}
+
+.arail-explain__degraded {
+  color: var(--muted);
+  font: var(--t-micro);
+}
+
+.arail-explain__error {
+  display: grid;
+  gap: var(--s-2);
+  justify-items: start;
+}
+
+.arail-explain__error-title {
+  color: var(--warn);
+  font: var(--t-body-strong);
+}
+
+.arail-explain__error-text {
+  color: var(--text-2);
+  font: var(--t-small);
+}
+
+/* provenance: what the product refused to say */
+.arail-prov {
+  margin-top: var(--s-1);
+}
+
+.arail-prov__summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap, 36px);
+  color: var(--muted);
+  font: var(--t-micro);
+  cursor: pointer;
+  list-style: none;
+}
+
+.arail-prov__summary::-webkit-details-marker {
+  display: none;
+}
+
+.arail-prov__summary::before {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 8px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform var(--dur) var(--ease);
+}
+
+.arail-prov[open] > .arail-prov__summary::before {
+  transform: rotate(45deg);
+}
+
+.arail-prov__summary:hover {
+  color: var(--text-2);
+}
+
+.arail-prov__group {
+  display: grid;
+  gap: 6px;
+  margin-top: var(--s-2);
+}
+
+.arail-prov__label {
+  color: var(--muted);
+  font: var(--t-micro);
+}
+
+.arail-prov__item {
+  display: grid;
+  gap: 2px;
+  color: var(--text-2);
+  font: var(--t-small);
+}
+
+.arail-prov__item q {
+  font-style: italic;
+}
+
+.arail-prov__reason {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  color: var(--muted);
+  font: var(--t-micro);
+}
+
+.arail-prov__meta {
+  margin-top: var(--s-2);
+  color: var(--muted);
+  font: var(--t-micro);
+}
+
+/* ---------------------------------------------------------------- states */
+.arail-error,
+.arail-empty {
+  display: grid;
+  gap: var(--s-2);
+  justify-items: start;
+  padding: var(--s-4) var(--s-5);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+}
+
+.arail-error {
+  border-left: 3px solid var(--danger);
+}
+
+.arail-error__title,
+.arail-empty__title {
+  font: var(--t-body-strong);
+}
+
+.arail-error__text,
+.arail-empty__text {
+  color: var(--text-2);
+  font: var(--t-small);
+  font-size: var(--fs-small, 12.5px);
+}
+
+/* Skeleton cards share the real card's bones so the grid does not reflow
+   when the payload lands. */
+.arail-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  min-height: 132px;
+  padding: var(--s-3) var(--s-4);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line-strong);
+  border-radius: var(--r);
+}
+
+.arail-skeleton__top {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.arail-skeleton__rank {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(var(--muted-rgb), 0.18);
+}
+
+.arail-skeleton__line {
+  display: block;
+  height: 10px;
+  width: 85%;
+  border-radius: 5px;
+  background: rgba(var(--muted-rgb), 0.18);
+  animation: arail-pulse 1100ms ease-in-out infinite;
+}
+
+.arail-skeleton__line--title {
+  height: 14px;
+  width: 95%;
+}
+
+.arail-skeleton__line--short {
+  width: 40%;
+}
+
+.arail-skeleton__foot {
+  display: block;
+  width: 30%;
+  height: 20px;
+  margin-top: auto;
+  border-radius: 5px;
+  background: rgba(var(--muted-rgb), 0.18);
+}

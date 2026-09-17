@@ -1,0 +1,1870 @@
+/* ==========================================================================
+   app.css — the shell and every component.
+
+   NOT ONE COLOUR LITERAL. Every value below resolves through a custom property
+   declared in theme/tokens.css, which is the only file allowed to hold a hex.
+   That is what makes the light theme a token swap rather than a second
+   stylesheet, and what lets a D3 module and a DOM node agree on what "danger"
+   means.
+
+   Naming is component-prefixed (hdr-, kpi-row__, arail__, ai-panel__, ask-,
+   dd__, pv-) so a rule's blast radius is legible from its selector. The long
+   tails of skeleton and provenance classes are handled by attribute selectors
+   at the end rather than enumerated, because they are the same three shapes
+   repeated per component.
+   ========================================================================== */
+
+@import "../theme/tokens.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: var(--t-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, p, ul, ol, figure {
+  margin: 0;
+}
+
+ul, ol {
+  padding: 0;
+  list-style: none;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 0.92em;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.visually-hidden,
+.pv-sr,
+.arail__sr,
+.ai-panel__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.muted,
+.pv-note,
+.pv-prov {
+  color: var(--muted);
+  font: var(--t-small);
+}
+
+/* ---------------------------------------------------------------- layout */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+/* The shell is one column by default and becomes a rail beside a body only on
+   a wide screen — see the min-width block below.
+   
+   The two-column grid CANNOT be the default. Below 1100px the rail is a
+   position:fixed drawer, which takes it out of the grid flow entirely; the
+   body then becomes the first in-flow item and lands in the rail's column,
+   which collapsed it to nothing. A grid whose column count depends on whether
+   a child happens to be in flow is a grid waiting to do that again. */
+.shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+}
+
+@media (min-width: 1101px) {
+  .shell {
+    grid-template-columns: 248px minmax(0, 1fr);
+    transition: grid-template-columns var(--dur) var(--ease);
+  }
+  .app--rail-closed .shell {
+    grid-template-columns: 0 minmax(0, 1fr);
+  }
+}
+
+.rail {
+  position: sticky;
+  top: var(--hdr-h);
+  align-self: start;
+  max-height: calc(100vh - var(--hdr-h));
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--s-4) var(--s-2) var(--s-6);
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+}
+
+.rail--closed {
+  padding: 0;
+  border-right: 0;
+}
+
+.body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+  width: 100%;
+  max-width: 1400px;
+  padding: var(--s-5) var(--s-5) var(--s-7);
+}
+
+/* ------------------------------------------------------------- sidebar nav */
+
+.side__group + .side__group {
+  margin-top: var(--s-4);
+}
+
+.side__heading {
+  padding: 0 var(--s-3) var(--s-2);
+  color: var(--muted);
+  font: var(--t-micro);
+  opacity: 0.8;
+}
+
+.side__list {
+  display: grid;
+  gap: 2px;
+}
+
+.side__item {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: var(--s-2);
+  align-items: start;
+  width: 100%;
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-sm);
+  border-left: 2px solid transparent;
+  text-align: left;
+  color: var(--text-2);
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.side__item:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+.side__item--on {
+  background: var(--surface2);
+  border-left-color: var(--persona);
+  color: var(--text);
+}
+
+.side__glyph {
+  padding-top: 1px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.side__item--on .side__glyph {
+  color: var(--persona);
+}
+
+.side__text {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.side__label {
+  font: var(--t-body-strong);
+}
+
+/* The page's question is what tells you whether this is the page you want;
+   "Calibration" on its own does not. */
+.side__question {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.side__item--on .side__question {
+  color: var(--text-2);
+}
+
+/* ---------------------------------------------------------------- filters */
+
+.fbar {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--s-3) var(--s-4);
+  flex-wrap: wrap;
+  padding: var(--s-3) var(--s-5);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.fbar--skeleton {
+  height: 56px;
+}
+
+.fbar__field {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.fbar__label {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.fbar__select {
+  min-width: 112px;
+  max-width: 180px;
+  padding: 6px 9px;
+  background: var(--surface2);
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font: var(--t-small);
+  transition: border-color var(--dur) var(--ease);
+}
+
+.fbar__select:hover { border-color: var(--line-strong); }
+
+.fbar__field--on .fbar__select {
+  border-color: var(--persona);
+  box-shadow: inset 0 0 0 1px var(--persona);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.fbar__field--on .fbar__label {
+  color: var(--persona);
+  font-weight: 600;
+}
+
+.fbar__spacer {
+  flex: 1;
+}
+
+.fbar__clear {
+  padding: 6px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  color: var(--text-2);
+  font: var(--t-small);
+  font-weight: 600;
+}
+
+.fbar__clear:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* ---------------------------------------------------------------- header */
+
+.hdr {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  height: 58px;
+  padding: 0 var(--s-5);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.hdr-name {
+  font: var(--t-h3);
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+/* One quiet button shape for every icon-only control in the header. */
+.ghost {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: var(--r-sm);
+  color: var(--muted);
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.ghost:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+/* ------------------------------------------------------------------- who */
+
+.who-wrap {
+  position: relative;
+}
+
+.who {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 4px 10px 4px 4px;
+  border-radius: var(--r-pill);
+  transition: background var(--dur) var(--ease);
+}
+
+.who:hover {
+  background: var(--surface2);
+}
+
+.who-avatar {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--persona);
+  color: var(--bg);
+  font: 600 11px/1 var(--font);
+}
+
+.who-text {
+  display: grid;
+  text-align: left;
+  line-height: 1.2;
+}
+
+.who-name {
+  font: var(--t-body-strong);
+  white-space: nowrap;
+}
+
+.who-role {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.who-caret {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.who-menu {
+  position: absolute;
+  top: calc(100% + var(--s-2));
+  right: 0;
+  z-index: 60;
+  width: 340px;
+  max-height: 74vh;
+  overflow: auto;
+  padding: var(--s-2);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--elev-2);
+}
+
+/* The lockup is never scaled non-uniformly and never recoloured; the theme
+   picks a different FILE (reversed wordmark) rather than filtering this one. */
+.hdr-logo {
+  display: block;
+  height: 30px;
+  width: auto;
+  flex-shrink: 0;
+}
+
+.hdr-right {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.seg {
+  display: inline-flex;
+  padding: 2px;
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+}
+
+.segbtn {
+  padding: 5px 13px;
+  border-radius: var(--r-pill);
+  color: var(--muted);
+  font: var(--t-micro);
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.segbtn.on {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* ------------------------------------------------------------- page head */
+
+.pv-head {
+  margin-bottom: var(--s-4);
+}
+
+.pv-head__question {
+  font: var(--t-display);
+  letter-spacing: -0.022em;
+}
+
+.pv-head__meta {
+  margin-top: var(--s-2);
+  color: var(--muted);
+  font: var(--t-small);
+}
+
+.pv-subhead {
+  margin: var(--s-6) 0 var(--s-3);
+  font: var(--t-h2);
+}
+
+.pv-block__title {
+  font: var(--t-h2);
+  margin-bottom: var(--s-2);
+}
+
+.pv-block__lead {
+  color: var(--text-2);
+  margin-bottom: var(--s-3);
+}
+
+/* ------------------------------------------------------------------- KPI */
+
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--s-3);
+  margin-top: var(--s-5);
+}
+
+.kpi-row__tile {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding: var(--s-4) var(--s-4) var(--s-5);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  text-align: left;
+}
+
+button.kpi-row__tile:hover {
+  border-color: var(--line-strong);
+}
+
+.kpi-row__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+
+.kpi-row__label {
+  color: var(--muted);
+  font: var(--t-label);
+}
+
+.kpi-row__dir {
+  margin-top: 2px;
+}
+
+.kpi-row__icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: var(--r-sm);
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.kpi-row__tile--accent .kpi-row__icon { color: var(--accent); background: rgba(var(--accent-rgb), 0.14); }
+.kpi-row__tile--good .kpi-row__icon { color: var(--good); background: rgba(var(--good-rgb), 0.14); }
+.kpi-row__tile--warn .kpi-row__icon { color: var(--warn); background: rgba(var(--warn-rgb), 0.14); }
+.kpi-row__tile--danger .kpi-row__icon { color: var(--danger); background: rgba(var(--danger-rgb), 0.14); }
+
+/* The sparkline is drawn only where a real series exists, so its absence is
+   meaningful and the tile must not reserve space for one that never comes. */
+.kpi-row__spark {
+  width: 100%;
+  height: 24px;
+  margin: 2px 0 -2px;
+  overflow: visible;
+}
+
+.kpi-row__spark-line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.kpi-row__spark-fill {
+  fill: currentColor;
+  opacity: 0.13;
+  stroke: none;
+}
+
+.kpi-row__spark-dot {
+  fill: currentColor;
+  stroke: var(--surface);
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+}
+
+.kpi-row__spark--accent { color: var(--accent); }
+.kpi-row__spark--good { color: var(--good); }
+.kpi-row__spark--warn { color: var(--warn); }
+.kpi-row__spark--danger { color: var(--danger); }
+.kpi-row__spark--neutral { color: var(--muted); }
+
+.kpi-row__value {
+  font: var(--t-kpi);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.kpi-row__tile--accent .kpi-row__value { color: var(--accent); }
+.kpi-row__tile--good .kpi-row__value { color: var(--good); }
+.kpi-row__tile--warn .kpi-row__value { color: var(--warn); }
+.kpi-row__tile--danger .kpi-row__value { color: var(--danger); }
+
+.kpi-row__sub {
+  color: var(--muted);
+  font: var(--t-small);
+}
+
+.kpi-row__dir {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: var(--t-micro);
+}
+
+.kpi-row__dir--up-good { color: var(--good); }
+.kpi-row__dir--up-bad { color: var(--danger); }
+.kpi-row__dir--neutral { color: var(--muted); }
+
+/* --------------------------------------------------------------- AI panel */
+
+/* ------------------------------------------------------------- AI panel
+
+   Restrained on purpose. This block is prose beside charts, so it should read
+   as a paragraph someone wrote, not as a console: no gradient, no glyph row of
+   labels, no repeated scope. The lens chips stay because they are the honest
+   part — each one says why this sentence is allowed to exist next to a chart
+   that already shows the level — but they are quiet, lowercase and secondary,
+   and the explanation is on demand rather than on screen. */
+
+.ai-panel {
+  margin-top: var(--s-5);
+  padding: var(--s-5) var(--s-5) var(--s-4);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+}
+
+.ai-panel__head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  color: var(--muted);
+  font: var(--t-micro);
+}
+
+.ai-panel__glyph { color: var(--accent); }
+
+/* The scope is in the header and the page subtitle; a third copy here is the
+   kind of repetition that makes a screen feel unfinished. */
+.ai-panel__scope { display: none; }
+
+/* Painted at all times so the head never reflows; faded in while a refresh
+   is in flight. */
+.ai-panel__refreshing {
+  margin-left: auto;
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease);
+}
+
+.ai-panel__refreshing--on {
+  opacity: 0.8;
+}
+
+.ai-panel__headline {
+  margin: var(--s-2) 0 var(--s-3);
+  font: var(--t-h2);
+  letter-spacing: -0.01em;
+}
+
+.ai-panel__list {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.ai-sentence__row {
+  display: flex;
+  gap: var(--s-3);
+  align-items: baseline;
+}
+
+.ai-sentence__text {
+  color: var(--text-2);
+  font: var(--t-body);
+}
+
+.ai-sentence__text b,
+.ai-sentence__text strong {
+  color: var(--text);
+  font-weight: 620;
+}
+
+.ai-sentence__lens {
+  flex-shrink: 0;
+  width: var(--ai-lens-w);
+  padding: 0;
+  text-align: left;
+  color: var(--muted);
+  font: var(--t-micro);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: help;
+  opacity: 0.85;
+  transition: opacity var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.ai-sentence__lens:hover { opacity: 1; color: var(--text-2); }
+
+.ai-sentence__tip {
+  margin: 4px 0 0 calc(var(--ai-lens-w) + var(--s-3));
+  padding: var(--s-2) var(--s-3);
+  background: var(--surface2);
+  border-radius: var(--r-sm);
+  color: var(--muted);
+  font: var(--t-small);
+}
+
+.ai-sentence__claim {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+}
+
+.ai-panel__foot,
+.ai-panel__prov {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  margin-top: var(--s-4);
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+/* The computed fallback is INFORMATION, not a warning: the numbers are
+   identical either way, so amber would be telling the reader to worry about
+   something that is working as designed. */
+.ai-panel__degraded { color: var(--muted); }
+
+.ai-panel__filter-toggle,
+.ask-disclosure__summary,
+.pv-scope__summary {
+  color: var(--muted);
+  font: var(--t-small);
+  cursor: pointer;
+  list-style: none;
+}
+
+.ai-panel__filter-toggle::-webkit-details-marker,
+.ask-disclosure__summary::-webkit-details-marker {
+  display: none;
+}
+
+.ai-panel__filter-body,
+.ask-disclosure__body,
+.pv-scope__body {
+  margin-top: var(--s-2);
+  padding: var(--s-3);
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  font: var(--t-small);
+}
+
+.ai-panel__token,
+.arail__token,
+.ask-provenance__token {
+  padding: 1px 5px;
+  background: rgba(var(--danger-rgb), 0.16);
+  border-radius: 4px;
+  color: var(--danger-on-wash);
+}
+
+/* ------------------------------------------------------------ action rail */
+
+/* The rail's own rules live in styles/actions.css, loaded after this file.
+   Only the two things this section still owns remain: the screen-reader
+   class is declared with the other .visually-hidden aliases near the top, and
+   .dd__code (the deal drawer's code line) used to share a rule with the old
+   predicate line, so it keeps that rule here. */
+
+.dd__code {
+  display: block;
+  margin-top: var(--s-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+/* ----------------------------------------------------------------- charts */
+
+.pv-charts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-4);
+  margin-top: var(--s-4);
+}
+
+.pv-charts__cell--wide {
+  grid-column: 1 / -1;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  padding: var(--s-5);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  min-width: 0;
+}
+
+/* The provenance disclosure. Closed it is one quiet line; open it is the proof. */
+.cmeta {
+  margin-top: var(--s-3);
+}
+
+.cmeta__toggle {
+  color: var(--muted);
+  font-size: 11.5px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.cmeta__toggle::-webkit-details-marker { display: none; }
+.cmeta__toggle:hover { color: var(--text-2); }
+
+.cmeta__body {
+  display: grid;
+  gap: 4px;
+  margin-top: var(--s-2);
+  padding-top: var(--s-2);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.cmeta__body code { color: var(--text-2); }
+
+.card-head h3 {
+  font: var(--t-h3);
+}
+
+.csub {
+  margin-top: 3px;
+  color: var(--muted);
+  font: var(--t-small);
+}
+
+.chartwrap {
+  flex: 1 0 auto;
+  min-height: 0;
+  margin-top: var(--s-3);
+}
+
+.chartwrap svg {
+  display: block;
+  width: 100%;
+}
+
+.cnote {
+  margin-top: var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  background: var(--surface2);
+  border-left: 2px solid var(--warn);
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  font: var(--t-small);
+}
+
+/* ---------------------------------------------------------------- filters */
+
+.pv-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+  margin-top: var(--s-4);
+}
+
+.pv-filters__label {
+  color: var(--muted);
+  font: var(--t-label);
+}
+
+.pv-filters__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 4px 10px;
+  background: rgba(var(--accent-rgb), var(--pill-wash));
+  border: 1px solid var(--accent);
+  border-radius: var(--r-pill);
+  color: var(--accent-on-wash);
+  font: var(--t-small);
+}
+
+.pv-filters__dim {
+  color: var(--muted);
+  text-transform: uppercase;
+  font-size: 10.5px;
+  letter-spacing: var(--label-track);
+}
+
+.pv-filters__clear {
+  color: var(--muted);
+  font: var(--t-small);
+  text-decoration: underline;
+}
+
+/* ----------------------------------------------------------------- tables */
+
+.pv-tablewrap {
+  margin-top: var(--s-3);
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+}
+
+.pv-table,
+.dd__bench-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--t-small);
+}
+
+.pv-table th,
+.dd__bench-table th {
+  position: sticky;
+  top: 0;
+  padding: var(--s-3);
+  background: var(--surface2);
+  color: var(--muted);
+  font: var(--t-label);
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--line);
+}
+
+.pv-table td,
+.dd__bench-table td {
+  padding: var(--s-3);
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.pv-table tbody tr:hover {
+  background: var(--surface2);
+}
+
+.pv-num,
+.dd__bench-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.pv-row--tail td {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.pv-thin {
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+  background: var(--track);
+  color: var(--muted);
+  font-size: 10.5px;
+  text-transform: uppercase;
+}
+
+.pv-cell__z--muted {
+  color: var(--muted);
+}
+
+.pv-sortbtn {
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+}
+
+.pv-risk__score {
+  display: inline-grid;
+  place-items: center;
+  min-width: 34px;
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------- whitespace */
+
+.pv-ws {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--s-3);
+  margin-top: var(--s-3);
+}
+
+.pv-ws__card {
+  display: grid;
+  gap: var(--s-2);
+  padding: var(--s-4);
+  background: linear-gradient(180deg, rgba(var(--good-rgb), 0.06), transparent 60%),
+    var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--good);
+  border-radius: var(--r);
+}
+
+.pv-ws__name {
+  font: var(--t-body-strong);
+}
+
+.pv-ws__holds {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.pv-ws__hold {
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  font: var(--t-micro);
+}
+
+.pv-ws__hold--none {
+  border-style: dashed;
+  border-color: var(--good);
+  color: var(--good);
+}
+
+.pv-ws__figs,
+.pv-figs {
+  display: flex;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+}
+
+.pv-ws__fig,
+.pv-figs__fig {
+  display: grid;
+}
+
+.pv-ws__value,
+.pv-figs__fig strong {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.pv-ws__method,
+.pv-ws__caption,
+.pv-figs__hint {
+  color: var(--muted);
+  font: var(--t-small);
+}
+
+.pv-ws__flag {
+  color: var(--good);
+  font: var(--t-micro);
+  text-transform: uppercase;
+  letter-spacing: var(--label-track);
+}
+
+/* --------------------------------------------------------------- findings */
+
+.pv-find {
+  display: grid;
+  gap: var(--s-4);
+  margin-top: var(--s-3);
+}
+
+.pv-find__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}
+
+.pv-find__cat {
+  font: var(--t-h3);
+}
+
+.pv-find__q,
+.pv-find__count,
+.pv-find__stake {
+  color: var(--muted);
+  font: var(--t-small);
+}
+
+.pv-find__list {
+  display: grid;
+  gap: var(--s-2);
+  margin-top: var(--s-2);
+}
+
+.pv-finding {
+  display: grid;
+  gap: 5px;
+  padding: var(--s-3);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+}
+
+.pv-finding__top,
+.pv-finding__foot {
+  display: flex;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+
+.pv-finding__entity {
+  font: var(--t-body-strong);
+}
+
+.pv-finding__body,
+.pv-finding__action {
+  color: var(--text-2);
+  font: var(--t-small);
+}
+
+.pv-finding__action {
+  padding-left: var(--s-3);
+  border-left: 2px solid var(--accent);
+}
+
+.pv-finding__tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+/* ----------------------------------------------------------- model card */
+
+.pv-model {
+  margin-top: var(--s-4);
+  padding: var(--s-4);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+}
+
+.pv-model__title {
+  font: var(--t-h3);
+}
+
+/* The honest read is the most important paragraph in the product and is
+   styled to be read, not skimmed past. */
+.pv-model__honest,
+.pv-model__why {
+  margin-top: var(--s-3);
+  padding: var(--s-3);
+  background: var(--surface2);
+  border-left: 2px solid var(--warn);
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.pv-model__factors,
+.pv-model__bands {
+  display: flex;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+  margin-top: var(--s-3);
+}
+
+.pv-model__factor,
+.pv-model__flag {
+  padding: 3px 9px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  font: var(--t-small);
+}
+
+.pv-model__fpts {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------ ask overlay */
+
+.ask-scrim,
+.dd-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: var(--scrim);
+  animation: fade var(--dur) var(--ease);
+}
+
+@keyframes fade {
+  from { opacity: 0; }
+}
+
+.ask-panel,
+.dd {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 100vw);
+  background: var(--surface);
+  border-left: 1px solid var(--line-strong);
+  box-shadow: var(--elev-2);
+  animation: slide var(--dur-slow) var(--ease);
+}
+
+.dd {
+  width: min(680px, 100vw);
+}
+
+@keyframes slide {
+  from { transform: translateX(16px); opacity: 0; }
+}
+
+.ask-panel__header,
+.dd__head {
+  display: grid;
+  gap: var(--s-2);
+  padding: var(--s-4) var(--s-5);
+  border-bottom: 1px solid var(--line);
+}
+
+.ask-panel__title,
+.dd__title {
+  font: var(--t-h2);
+}
+
+.ask-panel__scope,
+.dd__sub {
+  color: var(--muted);
+  font: var(--t-small);
+}
+
+.ask-panel__scope-value {
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.ask-panel__close,
+.dd__close {
+  position: absolute;
+  top: var(--s-3);
+  right: var(--s-4);
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-sm);
+  color: var(--muted);
+}
+
+.ask-panel__close:hover,
+.dd__close:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+.ask-panel__body,
+.dd__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--s-4) var(--s-5);
+}
+
+.ask-suggest__list {
+  display: flex;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+  margin-top: var(--s-2);
+}
+
+.ask-suggest__chip {
+  padding: 6px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  color: var(--text-2);
+  font: var(--t-small);
+  text-align: left;
+}
+
+.ask-suggest__chip:hover {
+  border-color: var(--accent);
+  color: var(--accent-on-wash);
+}
+
+.ask-suggest__label,
+.ask-compose__label {
+  color: var(--muted);
+  font: var(--t-label);
+}
+
+.ask-transcript {
+  display: grid;
+  gap: var(--s-5);
+  margin-top: var(--s-4);
+}
+
+.ask-turn__question {
+  padding: var(--s-3);
+  background: var(--surface2);
+  border-radius: var(--r-sm);
+  border-left: 2px solid var(--persona);
+}
+
+.ask-turn__q-label {
+  color: var(--muted);
+  font: var(--t-micro);
+  text-transform: uppercase;
+}
+
+.ask-turn__q-text {
+  font: var(--t-body-strong);
+}
+
+.ask-answer__headline {
+  margin: var(--s-3) 0 var(--s-2);
+  font: var(--t-h3);
+  font-size: 14px;
+}
+
+.ask-sentence__text {
+  color: var(--text-2);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.ask-sentence__lens {
+  padding: 1px 6px;
+  margin-right: var(--s-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  color: var(--muted);
+  font: var(--t-micro);
+  text-transform: uppercase;
+}
+
+.ask-chart {
+  margin-top: var(--s-3);
+}
+
+.ask-chart__why,
+.ask-answer__meta {
+  color: var(--muted);
+  font: var(--t-small);
+  margin-top: var(--s-2);
+}
+
+/* The plan is a FEATURE: it shows the answer came from a validated query over
+   the semantic layer rather than from a model inventing numbers. */
+.ask-plan {
+  margin-top: var(--s-2);
+  padding: var(--s-3);
+  overflow-x: auto;
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+.ask-tag {
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line-strong);
+  color: var(--muted);
+  font: var(--t-micro);
+  text-transform: uppercase;
+}
+
+.ask-tag--warn {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+
+.ask-refusal__badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  background: rgba(var(--warn-rgb), var(--pill-wash));
+  color: var(--warn-on-wash);
+  font: var(--t-micro);
+  text-transform: uppercase;
+}
+
+.ask-compose {
+  display: grid;
+  gap: var(--s-2);
+  padding: var(--s-4) var(--s-5);
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.ask-compose__field {
+  display: flex;
+  gap: var(--s-2);
+  align-items: flex-end;
+}
+
+.ask-compose__input {
+  flex: 1;
+  min-height: 42px;
+  max-height: 140px;
+  padding: var(--s-3);
+  resize: vertical;
+  background: var(--surface2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font: var(--t-body);
+}
+
+.ask-compose__input::placeholder {
+  color: var(--muted);
+}
+
+.ask-compose__send {
+  padding: 10px 18px;
+  background: var(--accent);
+  border-radius: var(--r-sm);
+  color: var(--on-accent);
+  font: var(--t-body-strong);
+}
+
+.ask-compose__send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ask-compose__hint {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* ----------------------------------------------------------- deal drawer */
+
+.dd__section {
+  padding: var(--s-4) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.dd__section-title {
+  font: var(--t-label);
+  color: var(--muted);
+  margin-bottom: var(--s-3);
+}
+
+.dd__facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: var(--s-3);
+}
+
+.dd__fact-label {
+  color: var(--muted);
+  font: var(--t-micro);
+  text-transform: uppercase;
+}
+
+.dd__fact-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.dd__risk {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+}
+
+.dd__risk-number {
+  font: var(--t-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.dd__band {
+  padding: 3px 11px;
+  border-radius: var(--r-pill);
+  font: var(--t-micro);
+  text-transform: uppercase;
+  border: 1px solid currentColor;
+}
+
+.dd__band--Critical,
+.dd__band--High { color: var(--danger); background: rgba(var(--danger-rgb), var(--pill-wash)); }
+.dd__band--Watch { color: var(--warn); background: rgba(var(--warn-rgb), var(--pill-wash)); }
+.dd__band--Low { color: var(--good); background: rgba(var(--good-rgb), var(--pill-wash)); }
+
+.dd__factors {
+  display: grid;
+  gap: var(--s-3);
+  margin-top: var(--s-3);
+}
+
+.dd__factor-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.dd__factor-label {
+  font: var(--t-body-strong);
+}
+
+.dd__factor-points {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.dd__factor-bar {
+  height: 5px;
+  margin: 5px 0;
+  background: var(--track);
+  border-radius: var(--r-pill);
+  overflow: hidden;
+}
+
+.dd__factor-fill {
+  height: 100%;
+  background: var(--danger);
+  border-radius: var(--r-pill);
+}
+
+.dd__factor-detail {
+  color: var(--text-2);
+  font: var(--t-small);
+}
+
+.dd__model-stats {
+  display: flex;
+  gap: var(--s-5);
+  flex-wrap: wrap;
+}
+
+.dd__stat-label {
+  color: var(--muted);
+  font: var(--t-micro);
+  text-transform: uppercase;
+}
+
+.dd__stat-value {
+  font: var(--t-h1);
+  font-variant-numeric: tabular-nums;
+}
+
+.dd__stat-note,
+.dd__caveat,
+.dd__bench-caveat,
+.dd__weak-note,
+.dd__section-note {
+  color: var(--muted);
+  font: var(--t-small);
+}
+
+.dd__caveat {
+  padding: var(--s-3);
+  margin-top: var(--s-3);
+  background: var(--surface2);
+  border-left: 2px solid var(--warn);
+  border-radius: var(--r-sm);
+}
+
+.dd__tag {
+  padding: 1px 7px;
+  border-radius: var(--r-pill);
+  font: var(--t-micro);
+  text-transform: uppercase;
+  border: 1px solid currentColor;
+}
+
+.dd__tag--GREEN { color: var(--good); }
+.dd__tag--RED { color: var(--danger); }
+
+/* A verdict the workbook itself calls near-noise must not look like a verdict. */
+.dd__tag--weak {
+  opacity: 0.55;
+  border-style: dashed;
+}
+
+.dd__timeline {
+  display: grid;
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+}
+
+.dd__event {
+  display: grid;
+  grid-template-columns: 10px 1fr;
+  gap: var(--s-3);
+  align-items: start;
+}
+
+.dd__event-dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.dd__event-field {
+  font: var(--t-body-strong);
+  font-size: 12.5px;
+}
+
+.dd__event-meta {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.dd__from { color: var(--muted); }
+.dd__arrow { color: var(--line-strong); margin: 0 5px; }
+.dd__to { color: var(--text); font-weight: 600; }
+
+/* The silence gap IS the finding on a stalled deal, so it is drawn rather
+   than described. */
+.dd__gap {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-2) 0 var(--s-2) 22px;
+  color: var(--warn);
+  font: var(--t-small);
+  border-left: 2px dashed var(--warn);
+  margin-left: 3px;
+}
+
+/* ---------------------------------------------------- errors and skeletons */
+
+.panel-error,
+.pv-error,
+.ask-error,
+.dd__error,
+.kpi-row__error,
+.ai-panel__error {
+  padding: var(--s-5);
+  background: var(--surface);
+  border: 1px solid var(--danger);
+  border-left: 3px solid var(--danger);
+  border-radius: var(--r);
+}
+
+.panel-error h2,
+.pv-error__title,
+.ask-error__title,
+.kpi-row__error-title {
+  font: var(--t-h2);
+  color: var(--danger);
+  margin-bottom: var(--s-2);
+}
+
+.pv-error__detail,
+.ask-error__detail,
+.kpi-row__error-detail,
+.dd__error-detail {
+  color: var(--text-2);
+  font: var(--t-small);
+}
+
+.pv-error__retry,
+.ask-error__retry,
+.kpi-row__retry,
+.ai-panel__retry,
+.dd__retry,
+.pv-linkbtn {
+  margin-top: var(--s-3);
+  padding: 6px 13px;
+  border: 1px solid var(--accent);
+  border-radius: var(--r-sm);
+  color: var(--accent-on-wash);
+  font: var(--t-small);
+  font-weight: 600;
+}
+
+.pv-empty,
+.ask-empty,
+.kpi-row__empty,
+.ai-panel__empty,
+.dd__empty {
+  padding: var(--s-6) var(--s-5);
+  text-align: center;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r);
+}
+
+.ask-empty__title,
+.pv-empty strong {
+  display: block;
+  color: var(--text);
+  font: var(--t-h3);
+  margin-bottom: var(--s-2);
+}
+
+/* Every skeleton in the app is the same three shapes. Matching the final
+   layout matters more than the shimmer: a skeleton that reflows on load reads
+   as a bug even when it is not. */
+[class*="__sk"],
+[class*="-skel"],
+[class*="__skeleton"],
+[class*="__bone"],
+.pv-skel,
+.dd-skel {
+  background: linear-gradient(
+    90deg,
+    var(--track) 25%,
+    var(--surface2) 37%,
+    var(--track) 63%
+  );
+  background-size: 400% 100%;
+  border-radius: var(--r-sm);
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  to { background-position: -135% 0; }
+}
+
+.pv-skel--title { height: 30px; width: 46%; margin-bottom: var(--s-3); }
+.pv-skel--eyebrow { height: 11px; width: 130px; margin-bottom: var(--s-2); }
+.pv-skel--meta { height: 11px; width: 34%; }
+.pv-skel--kpi { height: 92px; }
+.pv-skel--panel { height: 132px; margin-top: var(--s-4); }
+.pv-skel--action { height: 168px; }
+.pv-skel--chart { height: 300px; }
+
+.pv-skel-kpis {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--s-3);
+  margin-top: var(--s-4);
+}
+
+.pv-skel-rail {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: var(--s-3);
+  margin-top: var(--s-4);
+}
+
+.dd-skel--sm { height: 11px; width: 40%; }
+.dd-skel--md { height: 14px; width: 65%; }
+.dd-skel--lg { height: 22px; width: 80%; }
+.dd-skel--bar { height: 5px; }
+.dd-skel--block { height: 76px; }
+.dd-skel--score { height: 46px; width: 92px; }
+
+.ask-skeleton__line { height: 12px; margin-bottom: var(--s-2); }
+.ask-skeleton__line--short { width: 60%; }
+.ask-skeleton__headline { height: 16px; width: 48%; margin-bottom: var(--s-3); }
+.ask-skeleton__chart { height: 190px; margin-top: var(--s-3); }
+
+.kpi-row__bone--label { height: 10px; width: 62%; }
+.kpi-row__bone--value { height: 26px; width: 74%; margin: var(--s-2) 0; }
+.kpi-row__bone--sub { height: 10px; width: 88%; }
+
+.ai-panel__sk-line { height: 12px; margin-bottom: var(--s-2); }
+.ai-panel__sk-line--short { width: 56%; }
+.ai-panel__sk-head { height: 18px; width: 44%; margin-bottom: var(--s-3); }
+.ai-panel__sk-chip { height: 14px; width: 54px; }
+
+/* ----------------------------------------------------------------- footer */
+
+.foot {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+  padding: var(--s-4) var(--s-5);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font: var(--t-small);
+}
+
+/* ------------------------------------------------------------ responsive */
+
+@media (max-width: 1280px) {
+  .kpi-row,
+  .pv-skel-kpis {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Below this the rail is a drawer the header toggles, not a column. */
+@media (max-width: 1100px) {
+  .rail {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 85;
+    width: 264px;
+    max-height: none;
+    padding-top: var(--s-6);
+    box-shadow: var(--elev-2);
+  }
+  .app--rail-closed .rail {
+    display: none;
+  }
+}
+
+@media (max-width: 1024px) {
+  .pv-charts {
+    grid-template-columns: 1fr;
+  }
+  .pv-charts__cell--wide {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 860px) {
+  /* The header is a single row that must never wrap or clip; it tightens
+     before anything in it has to. */
+  .hdr {
+    gap: var(--s-2);
+    padding-left: var(--s-3);
+    padding-right: var(--s-3);
+  }
+}
+
+@media (max-width: 720px) {
+  .main {
+    padding: var(--s-4) var(--s-3) var(--s-7);
+  }
+  .foot {
+    padding-left: var(--s-3);
+    padding-right: var(--s-3);
+  }
+  .kpi-row,
+  .pv-skel-kpis {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .pv-ws,
+  .pv-skel-rail {
+    grid-template-columns: 1fr;
+  }
+  /* Six stacked selects is most of a phone screen, so the deck scrolls
+     sideways as one row instead of consuming the fold. */
+  .fbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: var(--s-3);
+    scrollbar-width: thin;
+  }
+  .fbar__field {
+    flex-shrink: 0;
+  }
+  .fbar__spacer {
+    display: none;
+  }
+  .pv-head__question {
+    font: var(--t-h1);
+  }
+  .ask-panel,
+  .dd {
+    width: 100vw;
+  }
+}
+
+/* The tooltip the D3 modules append to <body>. Declared here because it is a
+   DOM node the charts create but do not own the stylesheet for; the fade is
+   here rather than inline so it runs on the motion tokens. */
+.d3tip {
+  z-index: 95;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+
+/* A chart that is legitimately empty states what that MEANS, in its own words
+   from the server, instead of mounting a module to draw nothing. */
+.card-empty {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  min-height: 140px;
+  margin-top: var(--s-3);
+  padding: var(--s-4);
+  text-align: center;
+  background: var(--surface2);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  font: var(--t-small);
+  line-height: 1.6;
+}

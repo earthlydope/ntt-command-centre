@@ -1,0 +1,782 @@
+
+
+	
+	
+
+Functional Requirements for Sales Intelligence & AI Decisioning
+For - NTT DATA North America
+Draft 3 - September 16, 2026
+Background
+Syren is proposing a role-based sales intelligence experience for NTT DATA North America. The solution will use Salesforce pipeline and opportunity history to help sales users see risk early, understand why it is happening, decide what to do next, and find growth opportunities in existing accounts.
+This scope focuses only on the functional experience for three personas. The strongest focus is on charts, actions, decisions, and AI-assisted features.
+Problem/Need
+Sales data is available, but users still need a clear answer to four questions: What needs attention? Why does it need attention? What decision should I make? What action should happen next?
+The proposed experience should convert pipeline signals into a role-based workbench so that sales executives, managers, and leadership can move from information to action without reading large reports or manually comparing many records.
+Functional Requirements
+Core Use Cases
+• Anomaly Detection: Find unusual deal, rep, account, pipeline, value, margin, or process behavior. Show the reason, evidence, severity, and a suggested next review step.
+• Deal Closure Prediction: Show the likelihood of each deal closing, place it in a simple risk band, and show the strongest positive and negative factors behind the score.
+• Cross-Sell / Upsell: Find products or services that an account does not buy today but similar accounts often buy. Show confidence, supporting methods, and a simple reason for the recommendation.
+The anomaly engine is a review signal, not a final verdict. Cross-sell recommendations are growth ideas, not guaranteed sales. Risk thresholds and business rules should be configurable with NTT during implementation.
+
+User Personas and Roles
+User Persona
+	Interface
+	Role
+	
+Sales Executive / Account & Opportunity Owner
+	Web Application
+	Owns deals and accounts. Needs deal-level priorities, clear next actions, risk explanation, and account growth ideas.
+	
+Sales Manager / Regional or LOB Lead
+	Web Application
+	Manages team pipeline and forecast. Needs team priorities, coverage gaps, coaching signals, recovery actions, and growth assignment.
+	
+Commercial Head / Sales Leadership
+	Web Application
+	Owns business-level outcomes. Needs quarter confidence, concentration risk, strategic deal intervention, portfolio choices, and growth themes.
+	
+
+Common Functional Pattern
+Each persona should use the same simple flow. The amount of detail changes by role, but the flow stays consistent.
+Step
+	Functional behavior
+	
+1. Observe
+	KPI cards, charts, alerts, and exception lists show what changed or needs attention.
+	
+2. Understand
+	The user opens a deal, account, rep, or business area to see evidence, history, benchmark, and model drivers.
+	
+3. Decide
+	A decision card explains the issue or opportunity, business impact, confidence/severity, and available choices.
+	
+4. Act
+	The user creates the next step: update a deal, assign a review, request support, launch a recovery action, or pursue a cross-sell idea.
+	
+5. Track
+	The system keeps owner, due date, status, comments, decision reason, and outcome so the action can be followed to closure.
+	
+
+Common Decision Card - Required Fields
+Field
+	Requirement
+	
+Decision title
+	Short statement such as “Review high-value deal at risk” or “Consider cross-sell: Managed Services”.
+	
+Why now
+	The event or condition that caused the card to appear: risk drop, stage stall, anomaly, budget gap, or high-confidence growth recommendation.
+	
+Business impact
+	Deal value, GP, target gap, account value, or other amount affected.
+	
+Evidence
+	Source fields, history, peer benchmark, anomaly evidence, or model drivers used to support the card.
+	
+Confidence / severity
+	High/Medium/Low risk, anomaly severity, or Very High/High/Medium cross-sell confidence.
+	
+Recommended options
+	Two or more clear user choices. Example: review deal, update forecast, request support, monitor, dismiss with reason.
+	
+Owner and due date
+	Person responsible for the next step and when it should be completed.
+	
+Decision reason
+	Required short note when the user accepts, rejects, dismisses, or changes the suggested action.
+	
+Status and outcome
+	New, In Review, Actioned, Monitoring, Closed/Dismissed; final outcome stored for later learning and reporting.
+	
+
+Shared Filters and Navigation
+• Global filters: quarter, month, country, region, industry, account, business unit / LOB, product or service category, deal type, stage, owner, risk band, anomaly category, anomaly severity, and cross-sell confidence.
+• Clicking a KPI or chart segment should filter the rest of the page and open the related worklist.
+• Every chart should support a clear path from summary -> list -> detail -> action.
+• Users should be able to save a view and return to the same filters later.
+• An Action Centre should bring together risk reviews, anomaly reviews, manager requests, overdue actions, and growth opportunities relevant to the user.
+
+Persona 1 - Sales Executive / Account & Opportunity Owner
+Primary goal: Progress assigned deals, keep forecast and opportunity information current, remove deal blockers, and grow existing accounts.
+Key questions this persona should answer
+• Which of my deals need attention today?
+• Which high-value deals are at risk, and why?
+• What changed on a deal since my last review?
+• Which anomalies should I verify or correct?
+• What is the best next action for each priority deal?
+• Which existing accounts have the strongest cross-sell or upsell opportunities?
+Dashboard, Charts and Visual Views
+The dashboard should open with the most important decisions first. Every chart must support drill-down to the account, deal, rep, or business area behind the number.
+Chart / View
+	What the user sees
+	Main interaction / drill-down
+	Decision supported
+	
+My Pipeline KPI Strip
+	Open pipeline value, open GP, closed + commit, quarterly budget, gap to budget, qualified pipeline, high-risk value, overdue actions.
+	Click a KPI to open the underlying deals. Compare current period with previous snapshot where available.
+	Where should I spend time today?
+	
+My Deal Priority Board
+	One ranked worklist combining high value, low closure likelihood, stalled deals, severe anomalies, close-date urgency, and manager requests.
+	Sort by value, risk, close date, severity, or due date. Open the deal without leaving the board.
+	Which deal should I review first?
+	
+Deal Risk vs Value Matrix
+	Scatter plot with closure likelihood on one axis and deal value/GP on the other. Large, low-likelihood deals stand out.
+	Select a point to see deal name, stage, owner, close date, risk band, top positive drivers, and top negative drivers.
+	Is this deal important enough to intervene now?
+	
+Stage Funnel
+	Deal count and value by sales stage. Optional view by qualified pipeline, commit, or forecast category.
+	Click a stage to list deals. Filter by quarter, account, service category, or risk band.
+	Where are my deals getting stuck?
+	
+Deal Closure Driver View
+	Top factors helping and hurting one deal. Drivers shown as positive or negative and compared with the peer/benchmark value.
+	Click a driver to see the actual field value, benchmark, and recent history.
+	What must change to improve confidence?
+	
+Deal Movement Timeline
+	Chronological view of stage, forecast category, confidence, close date, value, and other tracked field changes.
+	Hover/click each event to show old value, new value, change date, and changed by.
+	What changed and does my current forecast still make sense?
+	
+Anomaly Review Panel
+	Anomaly category/type, evidence, severity, affected value, recommendation, and current review status.
+	Open the evidence. Compare the deal with the peer benchmark or rule. Mark valid, corrected, expected, dismissed, or escalated.
+	Is this a real issue or an explainable exception?
+	
+Pipeline Aging View
+	Age of open opportunities and time in current stage, split into simple aging bands.
+	Filter to stalled opportunities and open a deal directly.
+	Which deals need a status refresh or closure?
+	
+Account Whitespace Matrix
+	Current products/services by account versus recommended missing offerings. Shows confidence and why the recommendation appeared.
+	Open recommendation evidence: market-basket pattern, industry bundle, and/or similar-account method.
+	What should I discuss with this account next?
+	
+Cross-Sell Opportunity List
+	Account, current products, recommended offering, confidence, methods used, average peer revenue/GP context, and action status.
+	Save, dismiss, create follow-up, or create a new opportunity draft.
+	Which growth idea is strong enough to pursue?
+	
+
+Actions and Workflow
+Actions should be available from the chart, deal/account detail page, and Action Centre. The user should not need to leave the screen to create the next step.
+Trigger
+	Action available to user
+	System response
+	Result / record created
+	
+Risk band worsens or high-risk deal appears
+	Open deal review; confirm stage, close date, forecast category, confidence, value, and next step.
+	System saves updated fields and recalculates/refreshes the visible risk when the next data refresh occurs.
+	Deal review with timestamp and updated next step.
+	
+Deal is stalled / aging
+	Create follow-up with action, owner, due date, and customer next step.
+	Action appears in personal Action Centre and can generate an alert before due date.
+	Tracked follow-up action.
+	
+Anomaly appears
+	Review evidence; select Valid / Corrected / Expected / Dismissed / Escalate; add reason.
+	System keeps decision, note, reviewer, and timestamp with the anomaly.
+	Anomaly review record and status.
+	
+Negative deal driver is identified
+	Create a recovery task such as qualification refresh, pricing review, technical workshop, or customer meeting.
+	Task is linked to the deal and shown in priority board until closed.
+	Recovery action linked to driver.
+	
+Manager or leadership asks for review
+	Respond with latest status, evidence, blockers, support needed, and revised next step.
+	Request status changes to Responded / Needs Support / Closed.
+	Structured deal-review response.
+	
+Cross-sell recommendation is relevant
+	Accept idea; choose target offering; create account task or opportunity draft; add target date.
+	Recommendation becomes “In Progress” and is linked to the new sales action.
+	Growth action / opportunity draft.
+	
+Cross-sell recommendation is not relevant
+	Dismiss with a reason such as no need, existing competitor, contract restriction, timing, or wrong fit.
+	Reason is stored so future review can distinguish “not pursued” from “not seen”.
+	Dismissal reason and feedback.
+	
+Support is needed
+	Request manager, pricing, solution specialist, delivery, or executive support.
+	Support request is routed to selected role and appears on both users’ Action Centres.
+	Escalation / support task.
+	
+
+Decision System
+The decision system turns signals into a simple decision card. It should explain why attention is needed, show the evidence, give clear choices, and track what the user decided.
+Decision
+	Signals used
+	Decision card should show
+	User choices / decision
+	
+Deal attention
+	Closure likelihood, deal value/GP, stage, close date, movement, aging, anomaly severity.
+	Why the deal is priority; impact at risk; top drivers; recent movement; next milestone.
+	Review now / Monitor / Ask manager for help / Change next step.
+	
+Forecast update
+	Current stage, forecast category, confidence, close date, movement history, forecast regression anomaly.
+	Current forecast versus recent evidence; fields that changed; reason current confidence may be weak.
+	Keep forecast / Change category / Change confidence / Change close date.
+	
+Deal recovery
+	Negative drivers, stalled stage, aging, missing activity, value or margin anomalies.
+	Main blocker; evidence; recommended recovery actions; due date before expected close.
+	Create recovery action / Request specialist / Request pricing / Escalate.
+	
+Anomaly disposition
+	Anomaly type, evidence, peer benchmark/rule, severity, deal value.
+	What looks unusual; actual value; expected range/rule; affected business value.
+	Valid / Corrected / Expected / Dismiss / Escalate.
+	
+Cross-sell pursuit
+	Recommendation, confidence, methods, current products, industry/similar-account evidence.
+	Suggested offering; why it fits; methods that agree; peer context; account value context.
+	Pursue / Save for later / Discuss with manager / Dismiss with reason.
+	
+Account growth focus
+	Current product mix, whitespace, portfolio mix imbalance, won GP/revenue context, active pipeline.
+	Current relationship footprint; largest whitespace; existing active deals; overlap risk.
+	Add to account plan / Create opportunity / No action now.
+	
+
+AI-Assisted Features
+These are proposed AI-assisted user features on top of the analytics and model outputs. AI should explain and recommend; the user keeps final control.
+AI feature
+	What it does for the persona
+	User control / guardrail
+	
+Deal risk explanation
+	Explains in simple language why the deal is High/Medium/Low risk using the strongest positive and negative model drivers.
+	Must show the underlying fields and drivers. No automatic forecast change.
+	
+Next-best-action assistant
+	Suggests 2-3 practical next steps based on risk, stage, anomaly, movement, and close-date urgency.
+	User selects, edits, or ignores the suggestion before an action is created.
+	
+What changed? summary
+	Summarizes recent movement: stage changes, confidence changes, close-date shifts, value changes, and new anomalies.
+	Summary must link back to the source change records.
+	
+Anomaly explanation
+	Turns anomaly evidence into plain business language and states what should be checked.
+	Must show anomaly type, evidence, benchmark/rule, and severity.
+	
+Cross-sell reason builder
+	Creates a short account-specific rationale using current products, recommended offering, confidence, and method evidence.
+	User reviews before using the wording in an account conversation.
+	
+Account briefing
+	Creates a short pre-call brief with active deals, risk, recent changes, open actions, and growth ideas.
+	Uses only data the user is allowed to see; user can choose sections.
+	
+Ask AI about my book
+	Supports questions such as “Which deals changed this week?”, “What should I review before Friday?”, or “Where is my strongest whitespace?”.
+	Answers must cite the records/cards used and provide a drill-down link.
+	
+
+Persona 2 - Sales Manager / Regional or LOB Lead
+Primary goal: Protect the team forecast, maintain enough healthy pipeline, focus the team on the right deals, coach repeated issues, and make sure growth opportunities are owned and followed up.
+Key questions this persona should answer
+• Is my team on track against the quarterly budget?
+• Where is the largest coverage or forecast gap?
+• Which deals could materially change the quarter?
+• Which reps need a deal review or coaching conversation?
+• Where are repeated anomaly patterns appearing?
+• Which cross-sell opportunities should I assign and track?
+Dashboard, Charts and Visual Views
+The dashboard should open with the most important decisions first. Every chart must support drill-down to the account, deal, rep, or business area behind the number.
+Chart / View
+	What the user sees
+	Main interaction / drill-down
+	Decision supported
+	
+Team KPI Strip
+	Quarter budget, total pipeline, qualified pipeline, closed + commit, gap, high-risk pipeline, stalled pipeline, severe anomalies, cross-sell opportunities.
+	Click any KPI to filter the team worklist. Compare by region, LOB, rep, product/service area, or month.
+	Is the team broadly healthy or does it need intervention?
+	
+Pipeline vs Budget / Coverage
+	Bar or bullet view comparing budget, current pipeline, qualified pipeline, and closed + commit by rep or LOB.
+	Drill from team -> rep/LOB -> opportunity list. Toggle revenue/GP where required.
+	Where is the coverage gap and who owns it?
+	
+Forecast Risk Distribution
+	Pipeline value split by High/Medium/Low closure risk and forecast category.
+	Select a risk band to see the contributing deals and recent risk movement.
+	How much forecast value is exposed?
+	
+Manager Priority Deal Matrix
+	High-impact deals plotted by value, closure likelihood, close-date urgency, and anomaly severity.
+	Select deal to open driver view, movement timeline, and owner actions.
+	Which deals need manager intervention this week?
+	
+Risk-Adjusted Stage Funnel
+	Stage funnel with a second view showing how much pipeline remains strong after considering model risk.
+	Compare standard funnel with risk-aware view; drill to deal.
+	Is pipeline quantity hiding weak quality?
+	
+Coverage Heatmap by Rep / LOB
+	Heatmap showing target gap or coverage status across reps, business units, service categories, or regions.
+	Click weak cells to open the exact deals and missing pipeline areas.
+	Where should new pipeline generation be focused?
+	
+Pipeline Aging / Stall Heatmap
+	Open pipeline grouped by rep and time in stage / age band.
+	Select rep or aging band to list stale deals.
+	Where is pipeline being carried without recent movement?
+	
+Rep Forecast Reliability
+	Repeated forecast reversals, value shrinkage, sandbagging patterns, and forecast reliability signals by rep.
+	Open rep profile; compare pattern to peers and view example deals.
+	Is this a one-off deal issue or a coaching pattern?
+	
+Win-Rate Shortfall View
+	Win rate by rep/LOB/product compared with the peer/team baseline; highlights unusually weak areas.
+	Drill to closed deals and current coverage.
+	Do we need more coverage, better qualification, or execution support?
+	
+Top Deal Dependency / Pareto
+	Shows what share of target or open pipeline depends on the largest few deals.
+	Click a bar to see deal owners, risk, stage, and support status.
+	Is the quarter too dependent on a few deals?
+	
+Team Anomaly Heatmap
+	Anomaly types by rep or business area, with count, value affected, severity, and trend.
+	Open examples behind a repeated pattern. Filter to only validated anomalies if desired.
+	Which process or behavior issue needs coaching or correction?
+	
+Team Growth Opportunity Board
+	Cross-sell recommendations by rep/account/offering/confidence with status and owner.
+	Assign recommendation; monitor accepted/dismissed/in-progress; filter by method or industry.
+	Which opportunities should the team pursue first?
+	
+
+Actions and Workflow
+Actions should be available from the chart, deal/account detail page, and Action Centre. The user should not need to leave the screen to create the next step.
+Trigger
+	Action available to user
+	System response
+	Result / record created
+	
+High-risk / strategic deal appears
+	Assign a deal review to the owner with due date and required questions.
+	Owner receives a structured review task. Manager can see response status.
+	Manager review request.
+	
+Forecast gap is material
+	Create a recovery plan with gap amount, target area, actions, owners, and due dates.
+	System groups linked deal actions and new-pipeline actions under one recovery plan.
+	Forecast recovery plan.
+	
+Coverage is weak in a rep/LOB/product area
+	Assign pipeline-generation action or review existing low-quality opportunities.
+	Action remains open until owner updates the plan or creates required follow-up.
+	Coverage action.
+	
+Rep shows repeated anomaly pattern
+	Start coaching review; select example deals; add coaching note and agreed change.
+	Rep coaching history is stored separately from one-off anomaly decisions.
+	Coaching action and follow-up date.
+	
+Large deal needs help
+	Add solution, pricing, delivery, executive, or partner support.
+	Support request is linked to the deal and visible in the manager action view.
+	Support assignment.
+	
+Deal should not remain in forecast
+	Request forecast refresh or return deal to owner for correction.
+	Owner sees required fields/reason; manager sees pending status.
+	Forecast refresh request.
+	
+High-confidence cross-sell appears
+	Assign to account owner, set target date, and optionally group multiple recommendations into an account growth play.
+	Recommendation status and owner are tracked.
+	Growth assignment.
+	
+Cross-sell theme repeats across accounts
+	Create a team campaign list by offering/industry and assign account owners.
+	System produces a shared worklist of selected accounts and actions.
+	Team growth play.
+	
+
+Decision System
+The decision system turns signals into a simple decision card. It should explain why attention is needed, show the evidence, give clear choices, and track what the user decided.
+Decision
+	Signals used
+	Decision card should show
+	User choices / decision
+	
+Forecast confidence
+	Closed + commit, qualified pipeline, risk mix, deal movement, top-deal dependency, forecast reversals.
+	Current outlook; value at risk; deals causing movement; concentration in top deals; open manager reviews.
+	Accept current view / Require refresh / Escalate top deals / Build recovery plan.
+	
+Coverage recovery
+	Budget, pipeline coverage, qualified pipeline, win-rate shortfall, stage mix, new-business mix.
+	Where the gap sits by rep/LOB/product; current pipeline quality; likely reason for the gap.
+	Generate new pipeline / Improve qualification / Shift focus / Request leadership help.
+	
+Deal intervention
+	Deal value, closure likelihood, negative drivers, close-date urgency, anomaly severity, owner actions.
+	Why the deal matters; top risk reasons; existing actions; missing support.
+	Coach owner / Add specialist / Add executive sponsor / Monitor.
+	
+Rep coaching
+	Repeated forecast regression, value shrink, sandbagging, stalled deals, win-rate shortfall.
+	Pattern versus peers; example deals; frequency; affected pipeline value.
+	Coach now / Monitor pattern / Ask Sales Ops to review data/process.
+	
+Pipeline diversification
+	Top-deal dependency, rep concentration, account/industry concentration, new-business mix.
+	Where too much value is concentrated; downside if key deals/accounts slip.
+	Create diversification action / Rebalance prospecting / Escalate strategic exposure.
+	
+Growth allocation
+	Cross-sell confidence, methods agreeing, account value, current portfolio, active opportunities, owner capacity.
+	Best growth recommendations; reason; account ownership; existing sales activity.
+	Assign / Bundle into campaign / Save / Dismiss with reason.
+	
+
+AI-Assisted Features
+These are proposed AI-assisted user features on top of the analytics and model outputs. AI should explain and recommend; the user keeps final control.
+AI feature
+	What it does for the persona
+	User control / guardrail
+	
+Manager morning brief
+	Summarizes team movement since the last review: new risks, improved deals, severe anomalies, overdue reviews, and new growth opportunities.
+	Manager can open every item behind the summary.
+	
+Forecast gap explanation
+	Explains which reps, LOBs, products, or deals are driving the gap and separates quantity problems from quality/risk problems.
+	Uses visible metrics and drill-down evidence; no hidden forecast override.
+	
+Priority deal ranking
+	Ranks deals that need manager attention using business impact and urgency signals.
+	Ranking logic must be explainable and configurable; manager can re-order/pin deals.
+	
+Rep coaching assistant
+	Summarizes repeated patterns and suggests questions for the coaching conversation, using example deals.
+	Manager reviews wording and decides whether a pattern is coaching-worthy.
+	
+Recovery plan assistant
+	Suggests actions for a coverage or forecast gap and pre-fills owners based on current account/deal ownership.
+	Manager confirms actions, owners, and dates before creating plan.
+	
+Growth opportunity summary
+	Groups high-confidence cross-sell ideas by offering, industry, rep, and account.
+	Manager chooses which ideas to assign; no auto-created opportunities.
+	
+Ask AI about the team
+	Questions such as “Which reps have the most high-risk value?”, “What changed since Monday?”, “Where is our largest coverage hole?”.
+	Answer should show filters used and links to the underlying list.
+	
+
+Persona 3 - Commercial Head / Sales Leadership
+Primary goal: Understand quarter confidence, major business risks, strategic deal exposure, concentration, portfolio health, and the strongest growth themes across North America.
+Key questions this persona should answer
+• Are we on track for the quarter, and what could change the outcome?
+• Which regions, LOBs, accounts, or industries create the largest downside risk?
+• Which strategic deals need leadership intervention?
+• Where are we too dependent on a small number of deals, reps, accounts, or industries?
+• Which growth themes are large enough to turn into a focused commercial play?
+• What decisions need an owner this week?
+Dashboard, Charts and Visual Views
+The dashboard should open with the most important decisions first. Every chart must support drill-down to the account, deal, rep, or business area behind the number.
+Chart / View
+	What the user sees
+	Main interaction / drill-down
+	Decision supported
+	
+Executive KPI Strip
+	Quarter budget, closed + commit, total pipeline, qualified pipeline, gap to plan, high-risk value, top-deal dependency, severe anomaly exposure, high-confidence growth opportunities.
+	Select a KPI to open the business area and deals/accounts behind it.
+	What requires leadership attention now?
+	
+Quarter Outlook Bridge
+	Waterfall/bridge from target to closed/commit, qualified/open pipeline, risk exposure, and remaining gap.
+	Toggle region/LOB/product. Open the deals contributing to risk or upside.
+	How confident should we be in the quarter?
+	
+Regional / LOB Performance Heatmap
+	Target gap, pipeline coverage, risk mix, win-rate shortfall, anomaly exposure, and growth opportunity by region/LOB.
+	Click a cell to open manager view for that business area.
+	Where should leadership ask for a recovery plan?
+	
+Strategic Deal Risk Matrix
+	Largest deals plotted by value and closure likelihood, with close-date urgency and anomaly flags.
+	Open executive deal card showing owner, manager, drivers, movement, support, and next decision.
+	Which deals need executive sponsorship or intervention?
+	
+Top Deal Dependency / Pareto
+	Cumulative share of target/pipeline represented by the largest deals.
+	Switch by region/LOB and open the high-dependency deals.
+	Is the quarter too concentrated in a few outcomes?
+	
+Account Concentration View
+	Share of open/won value by top accounts; highlights unusually concentrated exposure.
+	Open account profile with current portfolio, risk, active pipeline, and whitespace.
+	Do we need retention or diversification action?
+	
+Industry Concentration View
+	Share of business by industry with target/pipeline and risk context.
+	Drill to accounts and active opportunities within an industry.
+	Are we too exposed to one industry or budget cycle?
+	
+Rep / Team Concentration View
+	Shows whether a large share of pipeline sits with one rep or a small team.
+	Drill to rep books and manager coverage plans.
+	Do we need succession/coverage support?
+	
+Portfolio Mix View
+	Product versus service mix, new business versus renewal mix, and areas of portfolio imbalance.
+	Click a segment to open accounts creating the imbalance.
+	Where should commercial focus shift?
+	
+Executive Risk & Upside Board
+	Two ranked lists: highest downside risks and strongest growth opportunities. Each item shows impact, reason, owner, and next action.
+	Pin items for leadership review; assign owner; set due date; export to decision pack.
+	What are the few things leadership should act on this week?
+	
+Growth Whitespace Matrix
+	Accounts/industries versus recommended offerings. Cell strength uses cross-sell confidence and business context.
+	Open cell to see methods, confidence, current products, similar-account or industry evidence, and owner.
+	Which growth themes are repeatable across many accounts?
+	
+Cross-Sell Theme View
+	Groups recommendations by target offering, industry, region, and confidence. Shows number of accounts and business context.
+	Select a theme to create an account list for a commercial campaign.
+	Should we launch a focused growth play?
+	
+Scenario View
+	Simple what-if controls such as strategic deal slips, risk band changes, or selected growth actions moving into pipeline.
+	Scenario results are clearly labeled assumptions and can be saved for discussion.
+	What is the impact if key assumptions change?
+	
+
+Actions and Workflow
+Actions should be available from the chart, deal/account detail page, and Action Centre. The user should not need to leave the screen to create the next step.
+Trigger
+	Action available to user
+	System response
+	Result / record created
+	
+Material business gap / risk cluster
+	Request a recovery plan from the regional/LOB manager with owner and due date.
+	Manager receives structured request linked to the relevant KPI/chart filters.
+	Leadership recovery request.
+	
+Strategic deal needs intervention
+	Assign executive sponsor, specialist support, or leadership review.
+	Support assignment is visible to owner, manager, and leadership.
+	Strategic deal action.
+	
+Quarter depends on few large deals
+	Create diversification action for affected region/LOB and set review cadence.
+	Action tracks new-pipeline/diversification steps separately from existing strategic deal actions.
+	Concentration mitigation plan.
+	
+Account/industry concentration is high
+	Request retention and diversification plan for selected exposure.
+	Plan is linked to account/industry view and owned by the relevant leader.
+	Risk mitigation plan.
+	
+Repeated cross-sell theme is strong
+	Create a commercial growth play by offering/industry/region and assign participating teams.
+	Selected accounts become a campaign worklist with owners and status.
+	Commercial growth play.
+	
+Portfolio mix is off target
+	Set focus area such as new business, services attach, or selected offering category.
+	Focus is visible in manager dashboards and leadership tracking.
+	Commercial priority.
+	
+Leadership decision is made
+	Record decision, rationale, owner, due date, and review date from the decision pack.
+	Decision appears in executive Action Centre and remains traceable.
+	Executive decision record.
+	
+
+Decision System
+The decision system turns signals into a simple decision card. It should explain why attention is needed, show the evidence, give clear choices, and track what the user decided.
+Decision
+	Signals used
+	Decision card should show
+	User choices / decision
+	
+Quarter confidence
+	Budget, closed + commit, qualified pipeline, closure risk mix, stage mix, top-deal dependency, movement.
+	Current gap; value exposed to high risk; biggest changes since last review; top assumptions.
+	Stay course / Request recovery / Add leadership support / Re-plan focus.
+	
+Strategic deal intervention
+	Deal value/GP, closure likelihood, drivers, movement, close-date urgency, anomaly evidence, current actions.
+	Why the deal is material; what is blocking it; who is already involved; missing support.
+	Sponsor / Add specialist / Ask manager for plan / Monitor.
+	
+Concentration risk
+	Top-deal, rep, account, and industry concentration signals plus current pipeline mix.
+	Where concentration sits; amount exposed; alternative pipeline available; owner.
+	Diversify / Protect key exposure / Request coverage plan / Monitor.
+	
+Regional / LOB focus
+	Target gap, coverage, risk, win rate, anomalies, growth opportunities.
+	Comparative view of business areas and primary cause of gap or upside.
+	Set focus / Request recovery / Shift support / Review next period.
+	
+Commercial growth play
+	Cross-sell confidence, repeated recommendation themes, current portfolio, industries/accounts affected, active pipeline overlap.
+	Theme size; evidence methods; target account list; current ownership; likely overlap with existing pipeline.
+	Launch play / Pilot with selected accounts / Save / Reject with reason.
+	
+Portfolio mix
+	New business mix, product/service mix, whitespace, account concentration, industry concentration.
+	Where mix differs from desired commercial balance and which accounts drive it.
+	Set portfolio priority / Ask managers for account plans / Monitor.
+	
+Scenario choice
+	Selected scenario assumptions applied to major deals/risk/growth inputs.
+	Base view versus scenario view; assumptions clearly listed; business areas affected.
+	Use for planning discussion / Save scenario / Discard; never overwrite base forecast automatically.
+	
+
+AI-Assisted Features
+These are proposed AI-assisted user features on top of the analytics and model outputs. AI should explain and recommend; the user keeps final control.
+AI feature
+	What it does for the persona
+	User control / guardrail
+	
+Executive early-warning brief
+	Highlights the few changes most likely to affect the quarter: major risk deterioration, concentration, strategic anomalies, and new upside.
+	Every statement links to a chart, deal, account, or manager action.
+	
+Executive narrative
+	Explains “what changed, why it matters, and what decision is needed” in a short leadership-ready summary.
+	Leader can edit the narrative; facts and assumptions remain distinguishable.
+	
+Risk theme detection
+	Groups multiple deal/anomaly signals into themes such as stalled late-stage pipeline, margin pressure, forecast reversals, or one-region concentration.
+	Theme must show the records behind it; user can dismiss irrelevant grouping.
+	
+Growth theme detection
+	Groups cross-sell recommendations into repeatable plays by offering, industry, region, or account profile.
+	Shows confidence and number of supporting recommendations before suggesting a play.
+	
+Scenario assistant
+	Lets leadership ask controlled what-if questions in natural language and converts them into visible assumptions.
+	Scenario is never written back as the official forecast without explicit user action.
+	
+Decision pack generator
+	Builds a review pack with selected KPI views, key risks, top opportunities, open decisions, owners, and due dates.
+	Leader selects what to include and can edit before export/share.
+	
+Ask AI about the business
+	Questions such as “What changed in the quarter outlook?”, “Which three business areas need recovery plans?”, or “Where do we have cross-sell themes?”.
+	Answer must respect active filters and provide drill-down references.
+	
+
+Shared Functional Requirements Across All Three Personas
+Capability
+	Functional requirement
+	
+Role-based landing page
+	Sales Executive opens at personal book of business; Manager at team/region/LOB; Commercial Head at North America summary.
+	
+Drill-down path
+	Every summary metric must allow summary -> filtered list -> deal/account/rep detail -> action.
+	
+Action Centre
+	One queue for assigned reviews, overdue tasks, high-risk deals, anomaly reviews, support requests, recovery actions, and cross-sell follow-up.
+	
+Alerts
+	Configurable alerts for risk deterioration, new severe anomaly, forecast regression, stalled strategic deal, margin/value exception, manager request, and high-confidence cross-sell.
+	
+Explainability
+	Every important score/flag must show why it appeared, key evidence, comparison/benchmark or rule, and last calculation date.
+	
+Comments and collaboration
+	Users can add notes, @mention relevant users if supported, assign owner, set due date, and keep the action history.
+	
+Decision history
+	For each decision card, store who decided, decision, reason, date/time, linked evidence, owner, and final status/outcome.
+	
+Saved views
+	Users can save filter combinations such as “My High-Risk Q4 Deals” or “West LOB Coverage Gap”.
+	
+Export
+	Allow export of the current filtered list and leadership decision pack. Export should reflect the visible filters and timestamp.
+	
+Human review
+	No anomaly should automatically mark a user/deal as wrong. No cross-sell idea should automatically create a customer commitment.
+	
+AI control
+	AI may summarize, explain, recommend, and draft actions. It should not silently change forecast, stage, pricing, approval, or opportunity data.
+	
+Feedback loop
+	Users can record whether recommendations were useful and why they were accepted/dismissed. This creates a future input for model/rule improvement.
+	
+
+Functional Data Elements Visible to Users
+The persona screens should use the following business fields from the supplied Salesforce-style datasets and analytical outputs. This is a functional list, not a technical data model.
+Area
+	Fields / information
+	
+Opportunity / account context
+	Account, industry, opportunity, stage, confidence, forecast category, create date, close date, opportunity/account owner, business unit, service category, order type, contract term.
+	
+Commercial value
+	ACV revenue, ACV GP, TCV revenue, TCV GP, gross margin percent.
+	
+Budget / coverage
+	Quarterly budget, monthly budget, total pipeline, qualified pipeline, closed + commit, budget gap, RAG status.
+	
+Movement history
+	Field changed, old value, new value, change date, changed by.
+	
+Anomaly output
+	Entity type, deal, rep, deal value, anomaly category, anomaly type, evidence, recommended action, severity, priority.
+	
+Cross-sell output
+	Account, industry, current products, recommended offering, confidence, why, methods, number of methods agreeing, peer won revenue/GP context, current won GP.
+	
+Deal closure output
+	Closure likelihood / risk band plus the most important positive and negative drivers for each deal.
+	
+
+Decision and Action Status Model
+Status
+	Meaning
+	
+New
+	Signal has been created and no user has reviewed it yet.
+	
+In Review
+	User is checking evidence or waiting for more information.
+	
+Actioned
+	A follow-up, support request, recovery action, or growth action has been created.
+	
+Monitoring
+	No immediate change; user wants the system to keep the item visible until a review date or new movement.
+	
+Closed
+	Decision/action is complete and outcome has been recorded.
+	
+Dismissed
+	User decided no action is required and provided a reason.
+	
+
+Scope Boundary
+This SOW intentionally covers only persona-facing functionality for the three personas above: dashboards and charts, drill-downs, actions, decision workflows, alerts, collaboration, and AI-assisted features.
+Technical architecture, cloud services, integration design, data engineering, security design, team structure, effort estimates, commercials, deployment plan, and production support are outside this document and can be defined separately.
